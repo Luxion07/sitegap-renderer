@@ -67,9 +67,9 @@ Tasks:
 
 - [x] Add `TASKS.md` (this file).
 - [x] Add `.gitignore` for editor and agent folders.
-- [ ] Add `AGENTS.md`: scope, implementation rules, commit convention, task
+- [x] Add `AGENTS.md`: scope, implementation rules, commit convention, task
       discipline.
-- [ ] Add `CLAUDE.md` containing `@AGENTS.md`.
+- [x] Add `CLAUDE.md` containing `@AGENTS.md`.
 - [ ] Add `docs/SPEC.md`: what the service does, the v1 contract, status codes,
       limits, non-goals.
 - [ ] Add `docs/ARCHITECTURE.md`: modules, request flow, browser lifecycle,
