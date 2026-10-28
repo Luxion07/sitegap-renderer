@@ -66,7 +66,7 @@ Goal: describe the service before writing code.
 Tasks:
 
 - [x] Add `TASKS.md` (this file).
-- [ ] Add `.gitignore` for editor and agent folders.
+- [x] Add `.gitignore` for editor and agent folders.
 - [ ] Add `AGENTS.md`: scope, implementation rules, commit convention, task
       discipline.
 - [ ] Add `CLAUDE.md` containing `@AGENTS.md`.
