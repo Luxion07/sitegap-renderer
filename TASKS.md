@@ -70,7 +70,7 @@ Tasks:
 - [x] Add `AGENTS.md`: scope, implementation rules, commit convention, task
       discipline.
 - [x] Add `CLAUDE.md` containing `@AGENTS.md`.
-- [ ] Add `docs/SPEC.md`: what the service does, the v1 contract, status codes,
+- [x] Add `docs/SPEC.md`: what the service does, the v1 contract, status codes,
       limits, non-goals.
 - [ ] Add `docs/ARCHITECTURE.md`: modules, request flow, browser lifecycle,
       SSRF guard, known gaps (DNS rebinding).
@@ -145,7 +145,7 @@ Tasks:
 - [ ] Slot limiter: at most N renders at once (default 2). Over the limit, reject
       immediately with `RESOURCE_EXHAUSTED`; no internal queue.
 - [ ] Bound each render by a timeout given by the caller (the gRPC deadline in
-      Phase 5).
+      Phase 5), never longer than `RENDERER_MAX_RENDER_MS` (SPEC §7).
 - [ ] Decide what happens when Chromium crashes or disconnects (relaunch, or exit
       and let the container restart). Record it in `docs/ARCHITECTURE.md`.
 - [ ] Tests: unit with a mocked browser (`overrideProvider`) — context closed on
@@ -220,12 +220,11 @@ Tasks:
 - [ ] Return `final_url`, the URL after redirects.
 - [ ] Read the deadline from the gRPC call; stop and close the context when it
       passes or the client cancels.
-- [ ] Map errors to the status codes in the ADR table: `INVALID_ARGUMENT`,
+- [ ] Map errors to the status codes in SPEC §5: `INVALID_ARGUMENT`,
       `PERMISSION_DENIED`, `DEADLINE_EXCEEDED`, `RESOURCE_EXHAUSTED`,
-      `UNAVAILABLE`.
-- [ ] Decide what a page with no text returns: `OK` with empty `text` (the
-      client keeps its 200-character rule) or an error. Record it in
-      `docs/SPEC.md`.
+      `UNAVAILABLE`, `INTERNAL`.
+- [ ] A page with no text, or a non-HTML main document, returns `OK` with empty
+      `text` (SPEC §4). The client keeps its 200-character rule.
 - [ ] Wire `Render` to the browser service, the guard and the extractor.
 - [ ] Tests: unit — extraction rules, the cap, status mapping; e2e — a page
       whose text appears only after JavaScript runs returns that text, and a
