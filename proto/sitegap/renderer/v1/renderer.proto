@@ -1,0 +1,16 @@
+syntax = "proto3";
+
+package sitegap.renderer.v1;
+
+service Renderer {
+  rpc Render(RenderRequest) returns (RenderResponse);
+}
+
+message RenderRequest {
+  string url = 1;
+}
+
+message RenderResponse {
+  string text = 1;      // readable text, whitespace collapsed, capped at 40,000 chars
+  string final_url = 2; // URL after redirects
+}
