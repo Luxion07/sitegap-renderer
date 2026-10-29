@@ -72,7 +72,7 @@ Tasks:
 - [x] Add `CLAUDE.md` containing `@AGENTS.md`.
 - [x] Add `docs/SPEC.md`: what the service does, the v1 contract, status codes,
       limits, non-goals.
-- [ ] Add `docs/ARCHITECTURE.md`: modules, request flow, browser lifecycle,
+- [x] Add `docs/ARCHITECTURE.md`: modules, request flow, browser lifecycle,
       SSRF guard, known gaps (DNS rebinding).
 - [ ] Add `README.md`: badges, what the service does, how to run and call it
       (commands filled in as later phases land).
