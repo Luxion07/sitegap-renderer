@@ -6,6 +6,8 @@
 ![Playwright](https://img.shields.io/badge/Playwright-Chromium-2EAD33?logo=playwright&logoColor=white)
 ![gRPC](https://img.shields.io/badge/gRPC-v1-244c5a?logo=grpc&logoColor=white)
 
+> **Status:** Phase 1 (Documentation) complete. Implementation starts in Phase 2. See [`TASKS.md`](TASKS.md).
+
 A headless Chromium gRPC rendering microservice for [SiteGap AI](https://github.com/Luxion07/sitegap-ai).
 
 ---
@@ -22,13 +24,15 @@ When `sitegap-ai` audits a website, its basic scraper (`fetch` + `cheerio`) extr
 - **Bounded Concurrency:** Fixed slots (default 2). Excess requests are rejected immediately with `RESOURCE_EXHAUSTED` (no queueing).
 - **Zero Secrets:** The service holds no database connections, Redis instances, or API keys.
 
+> **Warning (SPEC §8.3 — Network exposure):** The service has **no authentication**. It must listen only on a private network that the worker can reach, never on a public address.
+
 See [`docs/SPEC.md`](docs/SPEC.md) for the functional specification and [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) for the system design.
 
 ---
 
 ## API Contract (v1)
 
-Defined in [`proto/sitegap/renderer/v1/renderer.proto`](proto/sitegap/renderer/v1/renderer.proto):
+Defined in [`docs/SPEC.md` §4](docs/SPEC.md#4-api-contract-v1):
 
 ```proto
 syntax = "proto3";
@@ -70,7 +74,7 @@ Environment variables (validated at startup):
 ### Prerequisites
 
 - Node.js 22+
-- pnpm 9+
+- pnpm 10+
 
 ### Commands
 
@@ -93,13 +97,15 @@ pnpm test
 pnpm test:e2e
 ```
 
-### Calling with `grpcurl`
+### Calling
 
 ```bash
 # Render a URL
-grpcurl -plaintext -d '{"url": "https://example.com"}' \
+grpcurl -plaintext \
+  -import-path proto -proto sitegap/renderer/v1/renderer.proto \
+  -d '{"url": "https://example.com"}' \
   localhost:50051 sitegap.renderer.v1.Renderer/Render
 
-# Check service health
-grpcurl -plaintext localhost:50051 grpc.health.v1.Health/Check
+# Check service health via grpc_health_probe
+grpc_health_probe -addr=localhost:50051
 ```
