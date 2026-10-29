@@ -74,7 +74,7 @@ Tasks:
       limits, non-goals.
 - [x] Add `docs/ARCHITECTURE.md`: modules, request flow, browser lifecycle,
       SSRF guard, known gaps (DNS rebinding).
-- [ ] Add `README.md`: badges, what the service does, how to run and call it
+- [x] Add `README.md`: badges, what the service does, how to run and call it
       (commands filled in as later phases land).
 
 Do not implement:
