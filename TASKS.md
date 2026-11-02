@@ -43,9 +43,9 @@ Tasks:
       (together with Phase 2).
 - [x] Add a GitHub Actions workflow running lint, typecheck, unit and e2e tests
       (together with Phase 2).
-- [ ] Install Playwright Chromium in CI for the e2e suite (together with Phase 3).
+- [x] Install Playwright Chromium in CI for the e2e suite (together with Phase 3).
 - [x] Cover input validation (together with Phase 2).
-- [ ] Cover browser slots and context cleanup (together with Phase 3).
+- [x] Cover browser slots and context cleanup (together with Phase 3).
 - [ ] Port the `url-safety.test.ts` cases from sitegap-ai (together with Phase 4).
 - [ ] Cover extraction rules and status code mapping (together with Phase 5).
 - [ ] Cover health status changes (together with Phase 6).
@@ -139,8 +139,8 @@ Goal: manage Chromium safely — one browser, isolated contexts, bounded load.
 Tasks:
 
 - [x] Add Playwright (Chromium only).
-- [ ] Browser service: launch one Chromium at startup, close it on shutdown.
-- [ ] Open a fresh `BrowserContext` per request and close it in `finally` — also
+- [x] Browser service: launch one Chromium at startup, close it on shutdown.
+- [x] Open a fresh `BrowserContext` per request and close it in `finally` — also
       on errors and timeouts.
 - [x] Slot limiter: at most N renders at once (default 2). Over the limit, reject
       immediately with `RESOURCE_EXHAUSTED`; no internal queue.
@@ -148,7 +148,7 @@ Tasks:
       Phase 5), never longer than `RENDERER_MAX_RENDER_MS` (SPEC §7).
 - [x] Decide what happens when Chromium crashes or disconnects (relaunch, or exit
       and let the container restart). Record it in `docs/ARCHITECTURE.md`.
-- [ ] Tests: unit with a mocked browser (`overrideProvider`) — context closed on
+- [x] Tests: unit with a mocked browser (`overrideProvider`) — context closed on
       error, slot released, extra request rejected; e2e — real Chromium opens a
       local static page.
 
