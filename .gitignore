@@ -6,3 +6,16 @@
 .claude/
 .agents/
 .codex/
+
+# Node
+node_modules/
+dist/
+
+# Tests & coverage
+coverage/
+
+# Environment
+.env
+.env.local
+.env.*.local
+!.env.example

@@ -39,12 +39,12 @@ Goal: keep the service verifiable at every step.
 
 Tasks:
 
-- [ ] Add the Jest unit suite (`pnpm test`) and e2e suite (`pnpm test:e2e`)
+- [x] Add the Jest unit suite (`pnpm test`) and e2e suite (`pnpm test:e2e`)
       (together with Phase 2).
-- [ ] Add a GitHub Actions workflow running lint, typecheck, unit and e2e tests
+- [x] Add a GitHub Actions workflow running lint, typecheck, unit and e2e tests
       (together with Phase 2).
 - [ ] Install Playwright Chromium in CI for the e2e suite (together with Phase 3).
-- [ ] Cover input validation (together with Phase 2).
+- [x] Cover input validation (together with Phase 2).
 - [ ] Cover browser slots and context cleanup (together with Phase 3).
 - [ ] Port the `url-safety.test.ts` cases from sitegap-ai (together with Phase 4).
 - [ ] Cover extraction rules and status code mapping (together with Phase 5).
@@ -95,21 +95,21 @@ Goal: a NestJS gRPC server that speaks the v1 contract but does not render yet.
 
 Tasks:
 
-- [ ] Create the NestJS app (TypeScript strict, pnpm, Node 22).
-- [ ] Add ESLint and Prettier; scripts `lint`, `typecheck`, `test`, `test:e2e`,
+- [x] Create the NestJS app (TypeScript strict, pnpm, Node 22).
+- [x] Add ESLint and Prettier; scripts `lint`, `typecheck`, `test`, `test:e2e`,
       `format`.
-- [ ] Add `proto/sitegap/renderer/v1/renderer.proto` exactly as in the ADR.
-- [ ] Generate TypeScript types from the proto (pick the tool in this phase,
+- [x] Add `proto/sitegap/renderer/v1/renderer.proto` exactly as in the ADR.
+- [x] Generate TypeScript types from the proto (pick the tool in this phase,
       e.g. `ts-proto`).
-- [ ] Start the app as a gRPC microservice (`@nestjs/microservices`,
+- [x] Start the app as a gRPC microservice (`@nestjs/microservices`,
       `Transport.GRPC`).
-- [ ] Read config from env and validate it at startup: listen address, slot
+- [x] Read config from env and validate it at startup: listen address, slot
       count (default 2). Add `.env.example`.
-- [ ] `Render` validates `url`: malformed or not http(s) → `INVALID_ARGUMENT`.
+- [x] `Render` validates `url`: malformed or not http(s) → `INVALID_ARGUMENT`.
       Any other URL → `UNIMPLEMENTED` for now.
-- [ ] Enable shutdown hooks so `SIGTERM` closes the app cleanly.
-- [ ] Extend `.gitignore` with Node build output, coverage and env files.
-- [ ] Tests: unit for URL validation; e2e where a real gRPC client calls
+- [x] Enable shutdown hooks so `SIGTERM` closes the app cleanly.
+- [x] Extend `.gitignore` with Node build output, coverage and env files.
+- [x] Tests: unit for URL validation; e2e where a real gRPC client calls
       `Render`.
 
 Do not implement:

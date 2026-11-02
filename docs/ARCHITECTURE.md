@@ -247,12 +247,12 @@ requests to any other loopback port are still blocked.
 
 Each question is decided in its phase and recorded here.
 
-| Question | Phase |
-|---|---|
-| Which tool generates TypeScript types from the proto? | 2 |
-| When Chromium crashes: relaunch it in-process, or exit and let the container restart? | 3 |
-| Does `context.route` see each redirect hop? If not, how do we check them? | 4 |
-| When does a page count as rendered: `load`, `networkidle`, or waiting for text? | 5 |
+| Question | Phase | Decision |
+|---|---|---|
+| Which tool generates TypeScript types from the proto? | 2 | `ts-proto` with `nestJs=true` and lean output (no extra runtime dependencies) |
+| When Chromium crashes: relaunch it in-process, or exit and let the container restart? | 3 | — |
+| Does `context.route` see each redirect hop? If not, how do we check them? | 4 | — |
+| When does a page count as rendered: `load`, `networkidle`, or waiting for text? | 5 | — |
 
 ---
 
