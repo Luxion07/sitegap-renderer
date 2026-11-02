@@ -138,15 +138,15 @@ Goal: manage Chromium safely — one browser, isolated contexts, bounded load.
 
 Tasks:
 
-- [ ] Add Playwright (Chromium only).
+- [x] Add Playwright (Chromium only).
 - [ ] Browser service: launch one Chromium at startup, close it on shutdown.
 - [ ] Open a fresh `BrowserContext` per request and close it in `finally` — also
       on errors and timeouts.
-- [ ] Slot limiter: at most N renders at once (default 2). Over the limit, reject
+- [x] Slot limiter: at most N renders at once (default 2). Over the limit, reject
       immediately with `RESOURCE_EXHAUSTED`; no internal queue.
 - [ ] Bound each render by a timeout given by the caller (the gRPC deadline in
       Phase 5), never longer than `RENDERER_MAX_RENDER_MS` (SPEC §7).
-- [ ] Decide what happens when Chromium crashes or disconnects (relaunch, or exit
+- [x] Decide what happens when Chromium crashes or disconnects (relaunch, or exit
       and let the container restart). Record it in `docs/ARCHITECTURE.md`.
 - [ ] Tests: unit with a mocked browser (`overrideProvider`) — context closed on
       error, slot released, extra request rejected; e2e — real Chromium opens a
