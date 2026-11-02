@@ -2,8 +2,10 @@ import { NestFactory } from '@nestjs/core';
 import { MicroserviceOptions, Transport } from '@nestjs/microservices';
 import { join } from 'path';
 import { AppModule } from './app.module';
+import { validateEnv } from './config/env.validation';
 
 async function bootstrap() {
+  const env = validateEnv(process.env);
   const app = await NestFactory.createMicroservice<MicroserviceOptions>(
     AppModule,
     {
@@ -14,7 +16,7 @@ async function bootstrap() {
           process.cwd(),
           'proto/sitegap/renderer/v1/renderer.proto',
         ),
-        url: '0.0.0.0:50051',
+        url: env.RENDERER_ADDRESS,
       },
     },
   );
