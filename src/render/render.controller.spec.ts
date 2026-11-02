@@ -1,8 +1,8 @@
-import { RenderController } from './render.controller';
-import { Test, TestingModule } from '@nestjs/testing';
 import { status } from '@grpc/grpc-js';
 import { RpcException } from '@nestjs/microservices';
+import { Test, TestingModule } from '@nestjs/testing';
 import { RenderDto } from './dto/render.dto';
+import { RenderController } from './render.controller';
 
 describe('RenderController', () => {
   let controller: RenderController;

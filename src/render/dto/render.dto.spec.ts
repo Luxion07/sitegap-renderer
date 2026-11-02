@@ -1,5 +1,5 @@
-import { validate } from 'class-validator';
 import { plainToInstance } from 'class-transformer';
+import { validate } from 'class-validator';
 import { RenderDto } from './render.dto';
 
 describe('RenderDto', () => {
