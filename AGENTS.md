@@ -84,3 +84,7 @@ Rules:
 Implement only the current phase from `TASKS.md`.
 
 If a requested change touches future phases, stop and ask for confirmation.
+
+## Learning notes
+
+After finishing a task, suggest to the owner which topic in ~/projects/home-projects/my-library should get a MyProject block about it (what was done, why, trade-off, files). Do not edit my-library from this repo without the owner's confirmation.
