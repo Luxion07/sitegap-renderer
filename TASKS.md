@@ -46,7 +46,7 @@ Tasks:
 - [x] Install Playwright Chromium in CI for the e2e suite (together with Phase 3).
 - [x] Cover input validation (together with Phase 2).
 - [x] Cover browser slots and context cleanup (together with Phase 3).
-- [ ] Port the `url-safety.test.ts` cases from sitegap-ai (together with Phase 4).
+- [x] Port the `url-safety.test.ts` cases from sitegap-ai (together with Phase 4).
 - [ ] Cover extraction rules and status code mapping (together with Phase 5).
 - [ ] Cover health status changes (together with Phase 6).
 
@@ -174,22 +174,22 @@ Tasks:
       `[::ffff:7f00:1]`), which the sitegap-ai regex does not unwrap. Strip the
       brackets, unwrap both forms, block `::`. Consider `net.BlockList` instead
       of string prefixes. Add a test case for each form.
-- [ ] Intercept every request with `context.route('**/*')` — documents, iframes,
+- [x] Intercept every request with `context.route('**/*')` — documents, iframes,
       scripts, `fetch`/XHR — and abort blocked ones.
-- [ ] Redirects: Playwright calls the route handler only for the first URL of a
+- [x] Redirects: Playwright calls the route handler only for the first URL of a
       redirect chain. Verify this, and check every hop another way (e.g.
       `route.fetch({ maxRedirects: 0 })` and validate `Location`). If this
       changes the ADR design, record it in `docs/ARCHITECTURE.md`.
-- [ ] Create contexts with `serviceWorkers: 'block'`.
-- [ ] Block WebSockets (`context.routeWebSocket`).
-- [ ] Abort `image`, `font` and `media` requests in the same handler.
-- [ ] A blocked main document (the entered URL or a redirect hop) fails the
+- [x] Create contexts with `serviceWorkers: 'block'`.
+- [x] Block WebSockets (`context.routeWebSocket`).
+- [x] Abort `image`, `font` and `media` requests in the same handler.
+- [x] A blocked main document (the entered URL or a redirect hop) fails the
       render with `PERMISSION_DENIED`. A blocked subresource is dropped and the
       page goes on.
-- [ ] Test setup: the local test server itself runs on 127.0.0.1, so e2e tests
+- [x] Test setup: the local test server itself runs on 127.0.0.1, so e2e tests
       allow exactly its origin through an overridden policy provider. The guard
       stays on.
-- [ ] Tests: unit — ported cases and IPv6 literal cases; e2e with a local HTTP
+- [x] Tests: unit — ported cases and IPv6 literal cases; e2e with a local HTTP
       server — a page whose script calls a loopback address gets that request
       blocked, and a redirect to a loopback address is blocked.
 

@@ -54,9 +54,13 @@ src/
     browser.service.ts                 # one Chromium per process
     slot-limiter.ts                    # at most N renders at once
   safety/
-    address-policy.ts                  # which IP addresses are blocked
-    dns-resolver.ts                    # wraps dns.lookup, so tests can replace it
-    request-guard.ts                   # context.route handler
+    address-checker.interface.ts       # which IP addresses are blocked (strategy interface)
+    default-address-checker.ts         # net.BlockList implementation
+    dns-resolver.interface.ts          # DNS lookup abstraction
+    node-dns-resolver.ts               # wraps dns.lookup, so tests can replace it
+    url-safety.service.ts              # validates URLs and coordinates DNS + checkers
+    request-guard.ts                   # context.route & WebSocket handler
+    safety.module.ts
   extraction/
     text-extractor.ts                  # page → readable text (SPEC §6)
   health/                              # grpc.health.v1
@@ -124,7 +128,7 @@ sequenceDiagram
     loop every request the page makes
       P->>G: request
       G->>G: image/font/media → abort
-      G->>G: resolve DNS, check policy
+      G->>G: resolve DNS, check safety
       G-->>P: continue, or abort if blocked
     end
     P-->>S: loaded
@@ -251,7 +255,7 @@ Each question is decided in its phase and recorded here.
 |---|---|---|
 | Which tool generates TypeScript types from the proto? | 2 | `ts-proto` with `nestJs=true` and lean output (no extra runtime dependencies) |
 | When Chromium crashes: relaunch it in-process, or exit and let the container restart? | 3 | Exit process (`process.exit(1)`) and let the container orchestrator restart the container cleanly (Crash-only software) |
-| Does `context.route` see each redirect hop? If not, how do we check them? | 4 | — |
+| Does `context.route` see each redirect hop? If not, how do we check them? | 4 | No, `context.route` only sees the initial request. `RequestGuard` uses `route.fetch({ maxRedirects: 0 })` to inspect the `Location` header at each hop before proceeding. |
 | When does a page count as rendered: `load`, `networkidle`, or waiting for text? | 5 | — |
 
 ---
