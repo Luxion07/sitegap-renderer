@@ -4,10 +4,12 @@ import { DefaultAddressChecker } from './default-address-checker';
 import { DNS_RESOLVER } from './dns-resolver.interface';
 import { NodeDnsResolver } from './node-dns-resolver';
 import { UrlSafetyService } from './url-safety.service';
+import { RequestGuard } from './request-guard';
 
 @Module({
   providers: [
     UrlSafetyService,
+    RequestGuard,
     {
       provide: ADDRESS_CHECKER,
       useClass: DefaultAddressChecker,
@@ -17,6 +19,6 @@ import { UrlSafetyService } from './url-safety.service';
       useClass: NodeDnsResolver,
     },
   ],
-  exports: [UrlSafetyService, ADDRESS_CHECKER, DNS_RESOLVER],
+  exports: [UrlSafetyService, RequestGuard, ADDRESS_CHECKER, DNS_RESOLVER],
 })
 export class SafetyModule {}
