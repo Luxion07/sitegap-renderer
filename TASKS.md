@@ -165,11 +165,11 @@ Goal: no request made by the browser reaches a blocked address.
 
 Tasks:
 
-- [ ] Port `assertSafeUrl` from sitegap-ai: http(s) only, DNS resolved, every
+- [x] Port `assertSafeUrl` from sitegap-ai: http(s) only, DNS resolved, every
       resolved address checked, IPv4 and IPv6.
-- [ ] Port the `url-safety.test.ts` cases, so both implementations are held to
+- [x] Port the `url-safety.test.ts` cases, so both implementations are held to
       the same tests.
-- [ ] Handle IPv6 literals. `URL.hostname` keeps the brackets (`[::1]`), and URLs
+- [x] Handle IPv6 literals. `URL.hostname` keeps the brackets (`[::1]`), and URLs
       store IPv4-mapped addresses in hex (`[::ffff:127.0.0.1]` becomes
       `[::ffff:7f00:1]`), which the sitegap-ai regex does not unwrap. Strip the
       brackets, unwrap both forms, block `::`. Consider `net.BlockList` instead

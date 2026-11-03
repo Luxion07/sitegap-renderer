@@ -70,7 +70,7 @@ flowchart TB
   Browser[BrowserService]
   Slots[SlotLimiter]
   Guard[RequestGuard]
-  Policy[AddressPolicy]
+  Checker[AddressChecker]
   Dns[DnsResolver]
   Extractor[TextExtractor]
   Health[HealthService]
@@ -80,7 +80,7 @@ flowchart TB
   Service --> Browser
   Service --> Guard
   Service --> Extractor
-  Guard --> Policy
+  Guard --> Checker
   Guard --> Dns
   Health --> Browser
 ```
@@ -89,7 +89,7 @@ flowchart TB
 |---|---|---|
 | `render` | The controller only translates between gRPC and the service. `RenderService` is the single entry point that runs every step in order. | **Facade** |
 | `browser` | `BrowserService` owns the one Chromium process. NestJS providers are singletons by default, so every render shares it. `SlotLimiter` counts free slots. | **Singleton**, **Semaphore** |
-| `safety` | `AddressPolicy` answers "is this IP blocked?". It is a separate provider so e2e tests can swap it for a policy that allows their local server. | **Strategy** |
+| `safety` | `AddressChecker` answers "is this IP blocked?". It is a separate provider so e2e tests can swap it for a checker that allows their local server. | **Strategy** |
 | `extraction` | Pure function of the page's DOM. No I/O, easy to unit test. | — |
 | `health` | Reads the browser's state; owns no state of its own. | — |
 | `config` | Reads env once at startup and fails fast on bad values. | — |
@@ -234,11 +234,11 @@ message to the client.
 
 | Level | Tool | What is real | What is replaced |
 |---|---|---|---|
-| Unit | Jest + `Test.createTestingModule` | the class under test | Playwright, `DnsResolver`, `AddressPolicy` via `overrideProvider` |
-| e2e | Jest + `@grpc/grpc-js` client | gRPC, Chromium, a local HTTP server | `AddressPolicy` → a test policy that allows only the test server's origin |
+| Unit | Jest + `Test.createTestingModule` | the class under test | Playwright, `DnsResolver`, `AddressChecker` via `overrideProvider` |
+| e2e | Jest + `@grpc/grpc-js` client | gRPC, Chromium, a local HTTP server | `AddressChecker` → a test checker that allows only the test server's origin |
 
-The local test server runs on `127.0.0.1`, which the real policy blocks. The
-test policy allows exactly that host and port, so the guard stays on and
+The local test server runs on `127.0.0.1`, which the real checker blocks. The
+test checker allows exactly that host and port, so the guard stays on and
 requests to any other loopback port are still blocked.
 
 ---
