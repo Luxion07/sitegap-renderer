@@ -12,7 +12,11 @@ describe('RenderService', () => {
   let service: RenderService;
   let slotLimiter: SlotLimiter;
   let mockBrowserService: { withContext: jest.Mock };
-  let mockRequestGuard: { install: jest.Mock; getMainDocumentError: jest.Mock };
+  let mockRequestGuard: {
+    install: jest.Mock;
+    getMainDocumentError: jest.Mock;
+    getMainDocumentFinalUrl: jest.Mock;
+  };
   let mockTextExtractor: { extract: jest.Mock };
 
   beforeEach(async () => {
@@ -25,6 +29,7 @@ describe('RenderService', () => {
     mockRequestGuard = {
       install: jest.fn().mockResolvedValue(undefined),
       getMainDocumentError: jest.fn().mockReturnValue(null),
+      getMainDocumentFinalUrl: jest.fn().mockReturnValue(null),
     };
 
     mockTextExtractor = {
@@ -90,6 +95,31 @@ describe('RenderService', () => {
         finalUrl: 'https://example.com/final',
       });
       expect(slotLimiter.active).toBe(0);
+    });
+
+    it('uses final redirected URL from request guard when redirects occurred', async () => {
+      const mockPage = {
+        goto: jest.fn().mockResolvedValue(undefined),
+        url: jest.fn().mockReturnValue('https://example.com/start'),
+      };
+
+      const mockContext = {
+        newPage: jest.fn().mockResolvedValue(mockPage),
+      };
+
+      mockBrowserService.withContext.mockImplementation(
+        async (callback: (ctx: unknown) => Promise<unknown>) => {
+          return callback(mockContext);
+        },
+      );
+
+      mockRequestGuard.getMainDocumentFinalUrl.mockReturnValue(
+        'https://example.com/redirect-target',
+      );
+
+      const result = await service.render('https://example.com/start');
+
+      expect(result.finalUrl).toBe('https://example.com/redirect-target');
     });
   });
 

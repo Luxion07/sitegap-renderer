@@ -3,19 +3,28 @@ import { Test } from '@nestjs/testing';
 import { MicroserviceOptions, Transport } from '@nestjs/microservices';
 import * as grpc from '@grpc/grpc-js';
 import * as protoLoader from '@grpc/proto-loader';
+import * as http from 'node:http';
+import { AddressInfo } from 'node:net';
 import { join } from 'path';
 import { AppModule } from '../src/app.module';
 import {
-  RenderRequest,
-  RenderResponse,
-} from '../src/proto/sitegap/renderer/v1/renderer';
+  ADDRESS_CHECKER,
+  AddressChecker,
+} from '../src/safety/address-checker.interface';
+import { DefaultAddressChecker } from '../src/safety/default-address-checker';
+
+interface GrpcRenderResponse {
+  text: string;
+  final_url?: string;
+  finalUrl?: string;
+}
 
 interface GrpcRendererClient extends grpc.Client {
   render(
-    request: RenderRequest,
+    request: { url: string },
     callback: (
       error: grpc.ServiceError | null,
-      response: RenderResponse,
+      response: GrpcRenderResponse,
     ) => void,
   ): void;
 }
@@ -35,9 +44,30 @@ interface GrpcPackageRoot {
   };
 }
 
+class TestAddressChecker implements AddressChecker {
+  private readonly realChecker = new DefaultAddressChecker();
+
+  constructor(private readonly allowedPort: number) {}
+
+  isBlocked(ip: string, port?: number): boolean {
+    const unbracketed = ip.replace(/^\[|\]$/g, '');
+    if (
+      (unbracketed === '127.0.0.1' || unbracketed === 'localhost') &&
+      port === this.allowedPort
+    ) {
+      return false;
+    }
+    return this.realChecker.isBlocked(ip, port);
+  }
+}
+
 describe('Renderer gRPC e2e', () => {
   let serverApp: INestMicroservice;
   let grpcClient: GrpcRendererClient;
+  let allowedServer: http.Server;
+  let forbiddenServer: http.Server;
+  let allowedPort: number;
+  let forbiddenPort: number;
 
   const TEST_PORT = 50059;
   const TEST_SERVER_URL = `0.0.0.0:${TEST_PORT}`;
@@ -47,9 +77,83 @@ describe('Renderer gRPC e2e', () => {
   );
 
   beforeAll(async () => {
+    forbiddenServer = http.createServer((_req, res) => {
+      res.writeHead(200, { 'Content-Type': 'text/plain' });
+      res.end('secret-data');
+    });
+
+    await new Promise<void>((resolve) => {
+      forbiddenServer.listen(0, '127.0.0.1', () => {
+        forbiddenPort = (forbiddenServer.address() as AddressInfo).port;
+        resolve();
+      });
+    });
+
+    allowedServer = http.createServer((req, res) => {
+      if (req.url === '/js-rendered') {
+        res.writeHead(200, { 'Content-Type': 'text/html' });
+        res.end(`
+          <!DOCTYPE html>
+          <html>
+            <head><style>body { font-size: 14px; }</style></head>
+            <body>
+              <header><nav>Navigation To Strip</nav></header>
+              <div id="content">Initial Server Text</div>
+              <footer>Footer To Strip</footer>
+              <script>
+                document.getElementById('content').textContent = 'Rendered dynamically by JavaScript';
+              </script>
+            </body>
+          </html>
+        `);
+        return;
+      }
+
+      if (req.url === '/redirect-source') {
+        res.writeHead(302, {
+          Location: `http://127.0.0.1:${allowedPort}/redirect-target`,
+        });
+        res.end();
+        return;
+      }
+
+      if (req.url === '/redirect-target') {
+        res.writeHead(200, { 'Content-Type': 'text/html' });
+        res.end(`
+          <!DOCTYPE html>
+          <html>
+            <body>
+              <main>Redirect Target Content</main>
+            </body>
+          </html>
+        `);
+        return;
+      }
+
+      if (req.url === '/redirect-to-blocked') {
+        res.writeHead(302, {
+          Location: `http://127.0.0.1:${forbiddenPort}/secret`,
+        });
+        res.end();
+        return;
+      }
+
+      res.writeHead(404).end();
+    });
+
+    await new Promise<void>((resolve) => {
+      allowedServer.listen(0, '127.0.0.1', () => {
+        allowedPort = (allowedServer.address() as AddressInfo).port;
+        resolve();
+      });
+    });
+
     const testModule = await Test.createTestingModule({
       imports: [AppModule],
-    }).compile();
+    })
+      .overrideProvider(ADDRESS_CHECKER)
+      .useValue(new TestAddressChecker(allowedPort))
+      .compile();
 
     serverApp = testModule.createNestMicroservice<MicroserviceOptions>({
       transport: Transport.GRPC,
@@ -85,11 +189,15 @@ describe('Renderer gRPC e2e', () => {
   afterAll(async () => {
     grpcClient?.close();
     await serverApp?.close();
+    await new Promise<void>((resolve) => allowedServer?.close(() => resolve()));
+    await new Promise<void>((resolve) =>
+      forbiddenServer?.close(() => resolve()),
+    );
   });
 
-  function sendRenderRequest(
-    requestData: RenderRequest,
-  ): Promise<RenderResponse> {
+  function sendRenderRequest(requestData: {
+    url: string;
+  }): Promise<GrpcRenderResponse> {
     return new Promise((resolve, reject) => {
       grpcClient.render(requestData, (grpcError, response) => {
         if (grpcError) {
@@ -100,20 +208,53 @@ describe('Renderer gRPC e2e', () => {
     });
   }
 
-  it('should return UNIMPLEMENTED status when URL is valid', async () => {
-    const validRequest: RenderRequest = { url: 'https://example.com' };
+  it('renders dynamic client-side JS and extracts clean text', async () => {
+    const response = await sendRenderRequest({
+      url: `http://127.0.0.1:${allowedPort}/js-rendered`,
+    });
 
-    await expect(sendRenderRequest(validRequest)).rejects.toMatchObject({
-      code: grpc.status.UNIMPLEMENTED,
-      details: 'Render is not implemented yet',
+    expect(response.text).toBe('Rendered dynamically by JavaScript');
+    const finalUrl = response.final_url ?? response.finalUrl;
+    expect(finalUrl).toBe(`http://127.0.0.1:${allowedPort}/js-rendered`);
+  });
+
+  it('follows safe redirect and returns final redirected URL', async () => {
+    const response = await sendRenderRequest({
+      url: `http://127.0.0.1:${allowedPort}/redirect-source`,
+    });
+
+    expect(response.text).toBe('Redirect Target Content');
+    const finalUrl = response.final_url ?? response.finalUrl;
+    expect(finalUrl).toBe(`http://127.0.0.1:${allowedPort}/redirect-target`);
+  });
+
+  it('returns INVALID_ARGUMENT when URL format is invalid', async () => {
+    await expect(
+      sendRenderRequest({ url: 'not-a-valid-url' }),
+    ).rejects.toMatchObject({
+      code: grpc.status.INVALID_ARGUMENT,
     });
   });
 
-  it('should return INVALID_ARGUMENT status when URL is invalid', async () => {
-    const invalidRequest: RenderRequest = { url: 'not-a-valid-url' };
+  it('returns PERMISSION_DENIED when target URL resolves to blocked address', async () => {
+    await expect(
+      sendRenderRequest({
+        url: `http://127.0.0.1:${forbiddenPort}/secret`,
+      }),
+    ).rejects.toMatchObject({
+      code: grpc.status.PERMISSION_DENIED,
+      details: 'This URL cannot be analyzed for security reasons.',
+    });
+  });
 
-    await expect(sendRenderRequest(invalidRequest)).rejects.toMatchObject({
-      code: grpc.status.INVALID_ARGUMENT,
+  it('returns PERMISSION_DENIED when redirect hop resolves to blocked address', async () => {
+    await expect(
+      sendRenderRequest({
+        url: `http://127.0.0.1:${allowedPort}/redirect-to-blocked`,
+      }),
+    ).rejects.toMatchObject({
+      code: grpc.status.PERMISSION_DENIED,
+      details: 'This URL cannot be analyzed for security reasons.',
     });
   });
 });

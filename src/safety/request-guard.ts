@@ -2,12 +2,13 @@ import { Injectable } from '@nestjs/common';
 import { BrowserContext, Route } from 'playwright';
 import { UrlSafetyService } from './url-safety.service';
 
-const BLOCKED_RESOURCE_TYPES = new Set(['image', 'font', 'media']);
+const BLOCKED_RESOURCE_TYPES = new Set(['image', 'media', 'font']);
 const MAX_REDIRECTS = 10;
 
 @Injectable()
 export class RequestGuard {
   private mainDocumentError: Error | null = null;
+  private mainDocumentFinalUrl: string | null = null;
 
   constructor(private readonly urlSafetyService: UrlSafetyService) {}
 
@@ -15,8 +16,13 @@ export class RequestGuard {
     return this.mainDocumentError;
   }
 
+  getMainDocumentFinalUrl(): string | null {
+    return this.mainDocumentFinalUrl;
+  }
+
   async install(context: BrowserContext): Promise<void> {
     this.mainDocumentError = null;
+    this.mainDocumentFinalUrl = null;
 
     await context.routeWebSocket('**/*', (ws) => {
       void ws.close();
@@ -83,6 +89,9 @@ export class RequestGuard {
 
         const location = response.headers()['location'];
         if (!location) {
+          if (isNavigation) {
+            this.mainDocumentFinalUrl = redirectUrl;
+          }
           await route.fulfill({ response });
           return;
         }
@@ -103,6 +112,10 @@ export class RequestGuard {
         currentMethod = 'GET';
         postData = undefined;
         continue;
+      }
+
+      if (isNavigation) {
+        this.mainDocumentFinalUrl = redirectUrl;
       }
 
       await route.fulfill({ response });
