@@ -17,7 +17,10 @@ export class BrowserService
 
   async onApplicationBootstrap(): Promise<void> {
     this.logger.log('Launching headless Chromium...');
-    this.browser = await chromium.launch({ headless: true });
+    this.browser = await chromium.launch({
+      headless: true,
+      chromiumSandbox: true,
+    });
 
     this.browser.on('disconnected', () => {
       if (this.isShuttingDown) {

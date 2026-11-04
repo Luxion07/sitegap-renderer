@@ -127,13 +127,14 @@ docker build -t sitegap-renderer .
 docker run -d \
   --name sitegap-renderer \
   -p 50051:50051 \
-  --init \
   --shm-size=1gb \
+  --security-opt seccomp=seccomp_profile.json \
   sitegap-renderer
 ```
 
 Flags explained:
-- `--init`: Uses an init process to properly forward signals and reap zombie Chromium processes.
+- `--security-opt seccomp=seccomp_profile.json`: Applies the official Playwright seccomp profile, enabling Chromium's user namespace sandbox under the unprivileged `pwuser`.
 - `--shm-size=1gb`: Allocates shared memory for Chromium to prevent browser crashes on complex pages without sharing the host IPC namespace (`--ipc=host` is avoided for security).
 - Non-root user: The container runs under the non-root `pwuser` account.
+- Init process: `tini` is configured as the container entrypoint for signal forwarding and zombie process reaping.
 - Health check: Built-in Docker `HEALTHCHECK` queries standard `grpc.health.v1.Health/Check` via a lightweight script.
