@@ -11,11 +11,11 @@ async function bootstrap() {
     {
       transport: Transport.GRPC,
       options: {
-        package: 'sitegap.renderer.v1',
-        protoPath: join(
-          process.cwd(),
-          'proto/sitegap/renderer/v1/renderer.proto',
-        ),
+        package: ['sitegap.renderer.v1', 'grpc.health.v1'],
+        protoPath: [
+          join(process.cwd(), 'proto/sitegap/renderer/v1/renderer.proto'),
+          join(process.cwd(), 'proto/grpc/health/v1/health.proto'),
+        ],
         url: env.RENDERER_ADDRESS,
       },
     },
