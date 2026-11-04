@@ -47,8 +47,8 @@ Tasks:
 - [x] Cover input validation (together with Phase 2).
 - [x] Cover browser slots and context cleanup (together with Phase 3).
 - [x] Port the `url-safety.test.ts` cases from sitegap-ai (together with Phase 4).
-- [ ] Cover extraction rules and status code mapping (together with Phase 5).
-- [ ] Cover health status changes (together with Phase 6).
+- [x] Cover extraction rules and status code mapping (together with Phase 5).
+- [x] Cover health status changes (together with Phase 6).
 
 Acceptance criteria:
 
@@ -144,7 +144,7 @@ Tasks:
       on errors and timeouts.
 - [x] Slot limiter: at most N renders at once (default 2). Over the limit, reject
       immediately with `RESOURCE_EXHAUSTED`; no internal queue.
-- [ ] Bound each render by a timeout given by the caller (the gRPC deadline in
+- [x] Bound each render by a timeout given by the caller (the gRPC deadline in
       Phase 5), never longer than `RENDERER_MAX_RENDER_MS` (SPEC §7).
 - [x] Decide what happens when Chromium crashes or disconnects (relaunch, or exit
       and let the container restart). Record it in `docs/ARCHITECTURE.md`.
@@ -265,20 +265,20 @@ Goal: run the renderer in a container with the least privilege it needs.
 
 Tasks:
 
-- [ ] Dockerfile on `mcr.microsoft.com/playwright`, pinned to the exact
+- [x] Dockerfile on `mcr.microsoft.com/playwright`, pinned to the exact
       Playwright version in `package.json`.
-- [ ] Multi-stage build: a build stage, and a runtime stage with production
+- [x] Multi-stage build: a build stage, and a runtime stage with production
       dependencies only.
-- [ ] Run as a non-root user.
-- [ ] Add an init process for zombie reaping (`tini` or `docker run --init`).
-- [ ] Keep the Chromium sandbox on — no `--no-sandbox`. Use the seccomp profile
+- [x] Run as a non-root user.
+- [x] Add an init process for zombie reaping (`tini` or `docker run --init`).
+- [x] Keep the Chromium sandbox on — no `--no-sandbox`. Use the seccomp profile
       from the Playwright docs if the sandbox needs it.
-- [ ] Give Chromium enough shared memory with `--shm-size`. Avoid `--ipc=host`,
+- [x] Give Chromium enough shared memory with `--shm-size`. Avoid `--ipc=host`,
       which shares the host's IPC namespace with a process running untrusted
       JavaScript.
-- [ ] Docker `HEALTHCHECK` using the gRPC health service.
-- [ ] Add `.dockerignore`.
-- [ ] README: build and run commands.
+- [x] Docker `HEALTHCHECK` using the gRPC health service.
+- [x] Add `.dockerignore`.
+- [x] README: build and run commands.
 
 Acceptance criteria:
 

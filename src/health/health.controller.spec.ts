@@ -2,7 +2,10 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { firstValueFrom } from 'rxjs';
 import { HealthController } from './health.controller';
 import { BrowserService } from '../browser/browser.service';
-import { HealthCheckResponse_ServingStatus } from '../proto/grpc/health/v1/health';
+import {
+  HealthCheckRequest,
+  HealthCheckResponse_ServingStatus,
+} from '../proto/grpc/health/v1/health';
 
 describe('HealthController', () => {
   let controller: HealthController;
@@ -34,6 +37,12 @@ describe('HealthController', () => {
     it('returns SERVING for empty service string when browser is connected', () => {
       mockBrowserService.isConnected = true;
       const response = controller.check({ service: '' });
+      expect(response.status).toBe(HealthCheckResponse_ServingStatus.SERVING);
+    });
+
+    it('returns SERVING when request service is undefined/omitted', () => {
+      mockBrowserService.isConnected = true;
+      const response = controller.check({} as HealthCheckRequest);
       expect(response.status).toBe(HealthCheckResponse_ServingStatus.SERVING);
     });
 
