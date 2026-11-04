@@ -275,7 +275,42 @@ describe('RequestGuard', () => {
       expect(session.getMainDocumentError()).toBeInstanceOf(BlockedUrlError);
     });
 
-    it('allows document navigation when redirect chain is fully safe', async () => {
+    it('sets redirect target and aborts with aborted when document redirect is safe', async () => {
+      mockSafetyService.assertSafeUrl.mockResolvedValue({
+        url: new URL('https://example.com/next'),
+        ip: '93.184.216.34',
+      });
+
+      const mockRedirectResponse = {
+        status: () => 302,
+        headers: () => ({
+          location: 'https://example.com/next',
+        }),
+      };
+
+      const abortMock = jest.fn().mockResolvedValue(undefined);
+      const mockRoute = {
+        request: () =>
+          ({
+            resourceType: () => 'document',
+            url: () => 'https://example.com/start',
+            isNavigationRequest: () => true,
+            headers: () => ({}),
+            method: () => 'GET',
+            postDataBuffer: () => null,
+          }) as unknown as Request,
+        fetch: jest.fn().mockResolvedValue(mockRedirectResponse),
+        abort: abortMock,
+      } as unknown as Route;
+
+      await routeHandler(mockRoute);
+
+      expect(abortMock).toHaveBeenCalledWith('aborted');
+      expect(session.getRedirectTarget()).toBe('https://example.com/next');
+      expect(session.getMainDocumentError()).toBeNull();
+    });
+
+    it('allows document navigation when final document is safe', async () => {
       mockSafetyService.assertSafeUrl.mockResolvedValue({
         url: new URL('https://example.com/final'),
         ip: '93.184.216.34',
@@ -291,7 +326,7 @@ describe('RequestGuard', () => {
         request: () =>
           ({
             resourceType: () => 'document',
-            url: () => 'https://example.com/start',
+            url: () => 'https://example.com/final',
             isNavigationRequest: () => true,
             headers: () => ({}),
             method: () => 'GET',

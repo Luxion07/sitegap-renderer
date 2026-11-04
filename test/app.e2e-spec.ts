@@ -130,6 +130,36 @@ describe('Renderer gRPC e2e', () => {
         return;
       }
 
+      if (req.url === '/redirect-to-relative') {
+        res.writeHead(302, {
+          Location: `http://127.0.0.1:${allowedPort}/subpath/page-with-script`,
+        });
+        res.end();
+        return;
+      }
+
+      if (req.url === '/subpath/page-with-script') {
+        res.writeHead(200, { 'Content-Type': 'text/html' });
+        res.end(`
+          <!DOCTYPE html>
+          <html>
+            <body>
+              <div id="content">Initial Text</div>
+              <script src="relative-script.js"></script>
+            </body>
+          </html>
+        `);
+        return;
+      }
+
+      if (req.url === '/subpath/relative-script.js') {
+        res.writeHead(200, { 'Content-Type': 'application/javascript' });
+        res.end(`
+          document.getElementById('content').textContent = 'Loaded from relative script';
+        `);
+        return;
+      }
+
       if (req.url === '/redirect-to-blocked') {
         res.writeHead(302, {
           Location: `http://127.0.0.1:${forbiddenPort}/secret`,
@@ -226,6 +256,18 @@ describe('Renderer gRPC e2e', () => {
     expect(response.text).toBe('Redirect Target Content');
     const finalUrl = response.final_url ?? response.finalUrl;
     expect(finalUrl).toBe(`http://127.0.0.1:${allowedPort}/redirect-target`);
+  });
+
+  it('follows redirect and resolves relative script correctly', async () => {
+    const response = await sendRenderRequest({
+      url: `http://127.0.0.1:${allowedPort}/redirect-to-relative`,
+    });
+
+    expect(response.text).toBe('Loaded from relative script');
+    const finalUrl = response.final_url ?? response.finalUrl;
+    expect(finalUrl).toBe(
+      `http://127.0.0.1:${allowedPort}/subpath/page-with-script`,
+    );
   });
 
   it('returns INVALID_ARGUMENT when URL format is invalid', async () => {

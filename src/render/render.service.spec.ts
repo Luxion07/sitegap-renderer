@@ -15,6 +15,7 @@ describe('RenderService', () => {
   let mockGuardSession: {
     getMainDocumentError: jest.Mock;
     getMainDocumentFinalUrl: jest.Mock;
+    consumeRedirectTarget: jest.Mock;
   };
   let mockRequestGuard: {
     install: jest.Mock;
@@ -31,6 +32,7 @@ describe('RenderService', () => {
     mockGuardSession = {
       getMainDocumentError: jest.fn().mockReturnValue(null),
       getMainDocumentFinalUrl: jest.fn().mockReturnValue(null),
+      consumeRedirectTarget: jest.fn().mockReturnValue(null),
     };
 
     mockRequestGuard = {
@@ -102,10 +104,21 @@ describe('RenderService', () => {
       expect(slotLimiter.active).toBe(0);
     });
 
-    it('uses final redirected URL from request guard when redirects occurred', async () => {
+    it('follows redirects using page.goto loop and returns final redirected URL', async () => {
+      let gotoCalls = 0;
       const mockPage = {
-        goto: jest.fn().mockResolvedValue(undefined),
-        url: jest.fn().mockReturnValue('https://example.com/start'),
+        goto: jest.fn().mockImplementation((targetUrl: string) => {
+          gotoCalls++;
+          if (gotoCalls === 1) {
+            mockGuardSession.consumeRedirectTarget.mockReturnValueOnce(
+              'https://example.com/redirect-target',
+            );
+            return Promise.reject(new Error('page.goto: net::ERR_ABORTED'));
+          }
+          mockPage.url.mockReturnValue(targetUrl);
+          return Promise.resolve();
+        }),
+        url: jest.fn().mockReturnValue('https://example.com/redirect-target'),
       };
 
       const mockContext = {
@@ -118,12 +131,19 @@ describe('RenderService', () => {
         },
       );
 
-      mockGuardSession.getMainDocumentFinalUrl.mockReturnValue(
-        'https://example.com/redirect-target',
-      );
-
       const result = await service.render('https://example.com/start');
 
+      expect(mockPage.goto).toHaveBeenCalledTimes(2);
+      expect(mockPage.goto).toHaveBeenNthCalledWith(
+        1,
+        'https://example.com/start',
+        expect.any(Object),
+      );
+      expect(mockPage.goto).toHaveBeenNthCalledWith(
+        2,
+        'https://example.com/redirect-target',
+        expect.any(Object),
+      );
       expect(result.finalUrl).toBe('https://example.com/redirect-target');
     });
   });

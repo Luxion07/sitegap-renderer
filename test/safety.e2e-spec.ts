@@ -189,7 +189,14 @@ describe('SSRF Guard e2e', () => {
       const session = await guard.install(context);
 
       const page = await context.newPage();
-      await page.goto(`http://127.0.0.1:${allowedPort}/redirect-to-safe`);
+      try {
+        await page.goto(`http://127.0.0.1:${allowedPort}/redirect-to-safe`);
+      } catch {
+        const nextUrl = session.consumeRedirectTarget();
+        if (nextUrl) {
+          await page.goto(nextUrl);
+        }
+      }
 
       const heading = await page.textContent('h1');
       expect(heading).toBe('Safe Content');

@@ -255,7 +255,7 @@ Each question is decided in its phase and recorded here.
 |---|---|---|
 | Which tool generates TypeScript types from the proto? | 2 | `ts-proto` with `nestJs=true` and lean output (no extra runtime dependencies) |
 | When Chromium crashes: relaunch it in-process, or exit and let the container restart? | 3 | Exit process (`process.exit(1)`) and let the container orchestrator restart the container cleanly (Crash-only software) |
-| Does `context.route` see each redirect hop? If not, how do we check them? | 4 | No, `context.route` only sees the initial request. `RequestGuard` uses `route.fetch({ maxRedirects: 0 })` to inspect the `Location` header at each hop before proceeding. |
+| Does `context.route` see each redirect hop? If not, how do we check them? | 4 | No, `context.route` only sees the initial request. For the main document, `RequestGuard` checks each hop with `route.fetch({ maxRedirects: 0 })`, validates `Location` against the SSRF guard, aborts the hop, and `RenderService` navigates via `page.goto(location)` (up to 10 hops). This ensures Chromium updates its base URL so relative scripts resolve correctly. For subresources, `RequestGuard` resolves the redirect chain in-place via `route.fetch`. |
 | When does a page count as rendered: `load`, `networkidle`, or waiting for text? | 5 | `load` event (`waitUntil: 'load'`), bounded by caller gRPC deadline or `RENDERER_MAX_RENDER_MS`. `networkidle` can hang indefinitely on analytics/streaming connections, while waiting for text is brittle for empty or minimal pages. |
 
 ---
