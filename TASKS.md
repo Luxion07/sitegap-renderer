@@ -245,10 +245,10 @@ Goal: let the worker and Docker see whether the renderer can take requests.
 
 Tasks:
 
-- [ ] Add the standard `grpc.health.v1` service.
-- [ ] Report `SERVING` only while the browser is connected; `NOT_SERVING` after
+- [x] Add the standard `grpc.health.v1` service.
+- [x] Report `SERVING` only while the browser is connected; `NOT_SERVING` after
       a disconnect and during shutdown.
-- [ ] Tests: unit — status follows browser events; e2e — `Check` returns
+- [x] Tests: unit — status follows browser events; e2e — `Check` returns
       `SERVING`.
 
 Acceptance criteria:
