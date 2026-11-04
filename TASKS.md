@@ -209,24 +209,24 @@ sitegap-ai basic scraper.
 
 Tasks:
 
-- [ ] Choose when a page counts as rendered (`load`, `networkidle`, or waiting
+- [x] Choose when a page counts as rendered (`load`, `networkidle`, or waiting
       for text), always bounded by the client deadline.
-- [ ] Extract text with the same rules as `basic-scraper.ts`: remove `script`,
+- [x] Extract text with the same rules as `basic-scraper.ts`: remove `script`,
       `style`, `noscript`, `nav`, `footer`, `header`, `svg`, `iframe`; take the
       body text; collapse whitespace; trim; cap at 40,000 characters.
-- [ ] Use `textContent` (what cheerio's `.text()` returns), not `innerText`,
+- [x] Use `textContent` (what cheerio's `.text()` returns), not `innerText`,
       unless we decide otherwise — they differ on hidden elements and line
       breaks.
-- [ ] Return `final_url`, the URL after redirects.
-- [ ] Read the deadline from the gRPC call; stop and close the context when it
+- [x] Return `final_url`, the URL after redirects.
+- [x] Read the deadline from the gRPC call; stop and close the context when it
       passes or the client cancels.
-- [ ] Map errors to the status codes in SPEC §5: `INVALID_ARGUMENT`,
+- [x] Map errors to the status codes in SPEC §5: `INVALID_ARGUMENT`,
       `PERMISSION_DENIED`, `DEADLINE_EXCEEDED`, `RESOURCE_EXHAUSTED`,
       `UNAVAILABLE`, `INTERNAL`.
-- [ ] A page with no text, or a non-HTML main document, returns `OK` with empty
+- [x] A page with no text, or a non-HTML main document, returns `OK` with empty
       `text` (SPEC §4). The client keeps its 200-character rule.
-- [ ] Wire `Render` to the browser service, the guard and the extractor.
-- [ ] Tests: unit — extraction rules, the cap, status mapping; e2e — a page
+- [x] Wire `Render` to the browser service, the guard and the extractor.
+- [x] Tests: unit — extraction rules, the cap, status mapping; e2e — a page
       whose text appears only after JavaScript runs returns that text, and a
       redirect returns the right `final_url`.
 
