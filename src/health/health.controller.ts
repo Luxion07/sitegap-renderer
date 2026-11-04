@@ -17,7 +17,8 @@ export class HealthController implements IHealthController {
 
   @GrpcMethod('Health', 'Check')
   check(request: HealthCheckRequest): HealthCheckResponse {
-    if (!SUPPORTED_SERVICES.has(request.service)) {
+    const serviceName = request?.service ?? '';
+    if (!SUPPORTED_SERVICES.has(serviceName)) {
       return { status: HealthCheckResponse_ServingStatus.SERVICE_UNKNOWN };
     }
 

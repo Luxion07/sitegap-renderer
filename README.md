@@ -6,7 +6,7 @@
 ![Playwright](https://img.shields.io/badge/Playwright-Chromium-2EAD33?logo=playwright&logoColor=white)
 ![gRPC](https://img.shields.io/badge/gRPC-v1-244c5a?logo=grpc&logoColor=white)
 
-> **Status:** Phase 1 (Documentation) complete. Implementation starts in Phase 2. See [`TASKS.md`](TASKS.md).
+> **Status:** Implementation complete (Phases 1–7). See [`TASKS.md`](TASKS.md).
 
 A headless Chromium gRPC rendering microservice for [SiteGap AI](https://github.com/Luxion07/sitegap-ai).
 
@@ -78,8 +78,6 @@ Environment variables (validated at startup):
 
 ### Commands
 
-> Note: Implementation commands will be enabled as phases land (see [`TASKS.md`](TASKS.md)).
-
 ```bash
 # Install dependencies
 pnpm install
@@ -106,6 +104,36 @@ grpcurl -plaintext \
   -d '{"url": "https://example.com"}' \
   localhost:50051 sitegap.renderer.v1.Renderer/Render
 
-# Check service health via grpc_health_probe
-grpc_health_probe -addr=localhost:50051
+# Check service health via grpcurl
+grpcurl -plaintext \
+  -import-path proto -proto grpc/health/v1/health.proto \
+  -d '{"service": ""}' \
+  localhost:50051 grpc.health.v1.Health/Check
 ```
+
+---
+
+## Docker
+
+### Build
+
+```bash
+docker build -t sitegap-renderer .
+```
+
+### Run
+
+```bash
+docker run -d \
+  --name sitegap-renderer \
+  -p 50051:50051 \
+  --init \
+  --shm-size=1gb \
+  sitegap-renderer
+```
+
+Flags explained:
+- `--init`: Uses an init process to properly forward signals and reap zombie Chromium processes.
+- `--shm-size=1gb`: Allocates shared memory for Chromium to prevent browser crashes on complex pages without sharing the host IPC namespace (`--ipc=host` is avoided for security).
+- Non-root user: The container runs under the non-root `pwuser` account.
+- Health check: Built-in Docker `HEALTHCHECK` queries standard `grpc.health.v1.Health/Check` via a lightweight script.
