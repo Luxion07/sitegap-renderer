@@ -1,5 +1,11 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { BrowserContext, Request, Route, WebSocketRoute } from 'playwright';
+import {
+  BrowserContext,
+  Frame,
+  Request,
+  Route,
+  WebSocketRoute,
+} from 'playwright';
 import { RequestGuard } from './request-guard';
 import { UrlSafetyService } from './url-safety.service';
 import { BlockedUrlError } from './errors/blocked-url.error';
@@ -147,6 +153,30 @@ describe('RequestGuard', () => {
             resourceType: () => 'script',
             url: () => 'http://127.0.0.1/evil.js',
             isNavigationRequest: () => false,
+          }) as unknown as Request,
+        abort: abortMock,
+      } as unknown as Route;
+
+      await routeHandler(mockRoute);
+
+      expect(abortMock).toHaveBeenCalledWith('blockedbyclient');
+      expect(guard.getMainDocumentError()).toBeNull();
+    });
+
+    it('aborts blocked iframe navigation without failing main document', async () => {
+      mockSafetyService.assertSafeUrl.mockRejectedValue(new BlockedUrlError());
+
+      const abortMock = jest.fn().mockResolvedValue(undefined);
+      const mockRoute = {
+        request: () =>
+          ({
+            resourceType: () => 'document',
+            url: () => 'http://127.0.0.1/evil-iframe',
+            isNavigationRequest: () => true,
+            frame: () =>
+              ({
+                parentFrame: () => ({}) as unknown as Frame,
+              }) as unknown as Frame,
           }) as unknown as Request,
         abort: abortMock,
       } as unknown as Route;

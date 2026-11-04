@@ -35,7 +35,11 @@ export class RequestGuard {
 
   private async handleRoute(route: Route): Promise<void> {
     const request = route.request();
-    const isNavigation = request.isNavigationRequest();
+    const isMainDocument =
+      request.isNavigationRequest() &&
+      (typeof request.frame === 'function' && request.frame()
+        ? request.frame().parentFrame() === null
+        : true);
     const resourceType = request.resourceType();
 
     if (BLOCKED_RESOURCE_TYPES.has(resourceType)) {
@@ -47,7 +51,7 @@ export class RequestGuard {
     try {
       await this.urlSafetyService.assertSafeUrl(currentUrl);
     } catch (err) {
-      if (isNavigation) {
+      if (isMainDocument) {
         this.mainDocumentError =
           err instanceof Error ? err : new Error(String(err));
       }
@@ -80,7 +84,7 @@ export class RequestGuard {
       if (status >= 300 && status < 400) {
         redirectCount++;
         if (redirectCount > MAX_REDIRECTS) {
-          if (isNavigation) {
+          if (isMainDocument) {
             this.mainDocumentError = new Error('Too many redirects');
           }
           await route.abort('failed');
@@ -89,7 +93,7 @@ export class RequestGuard {
 
         const location = response.headers()['location'];
         if (!location) {
-          if (isNavigation) {
+          if (isMainDocument) {
             this.mainDocumentFinalUrl = redirectUrl;
           }
           await route.fulfill({ response });
@@ -100,7 +104,7 @@ export class RequestGuard {
         try {
           await this.urlSafetyService.assertSafeUrl(nextUrl);
         } catch (err) {
-          if (isNavigation) {
+          if (isMainDocument) {
             this.mainDocumentError =
               err instanceof Error ? err : new Error(String(err));
           }
@@ -114,7 +118,7 @@ export class RequestGuard {
         continue;
       }
 
-      if (isNavigation) {
+      if (isMainDocument) {
         this.mainDocumentFinalUrl = redirectUrl;
       }
 
