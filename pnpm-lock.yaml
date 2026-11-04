@@ -30,7 +30,7 @@ importers:
         specifier: ^0.15.1
         version: 0.15.1
       playwright:
-        specifier: ^1.64.1
+        specifier: 1.64.1
         version: 1.64.1
       reflect-metadata:
         specifier: ^0.2.2
