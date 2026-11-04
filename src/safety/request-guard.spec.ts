@@ -6,13 +6,14 @@ import {
   Route,
   WebSocketRoute,
 } from 'playwright';
-import { RequestGuard } from './request-guard';
+import { GuardSession, RequestGuard } from './request-guard';
 import { UrlSafetyService } from './url-safety.service';
 import { BlockedUrlError } from './errors/blocked-url.error';
 import { InvalidUrlError } from './errors/invalid-url.error';
 
 describe('RequestGuard', () => {
   let guard: RequestGuard;
+  let session: GuardSession;
   let mockSafetyService: { assertSafeUrl: jest.Mock };
   let routeMock: jest.Mock;
   let routeWebSocketMock: jest.Mock;
@@ -56,7 +57,7 @@ describe('RequestGuard', () => {
   });
 
   it('installs route and routeWebSocket on BrowserContext', async () => {
-    await guard.install(mockContext);
+    session = await guard.install(mockContext);
 
     expect(routeMock).toHaveBeenCalledWith('**/*', expect.any(Function));
     expect(routeWebSocketMock).toHaveBeenCalledWith(
@@ -66,7 +67,7 @@ describe('RequestGuard', () => {
   });
 
   it('immediately closes any incoming WebSocket connection', async () => {
-    await guard.install(mockContext);
+    session = await guard.install(mockContext);
 
     const closeMock = jest.fn();
     const mockWs = { close: closeMock } as unknown as WebSocketRoute;
@@ -77,7 +78,7 @@ describe('RequestGuard', () => {
 
   describe('resource type filtering', () => {
     beforeEach(async () => {
-      await guard.install(mockContext);
+      session = await guard.install(mockContext);
     });
 
     it.each(['image', 'font', 'media'])(
@@ -104,7 +105,7 @@ describe('RequestGuard', () => {
 
   describe('subresource requests', () => {
     beforeEach(async () => {
-      await guard.install(mockContext);
+      session = await guard.install(mockContext);
     });
 
     it('allows safe subresources (e.g. script)', async () => {
@@ -140,7 +141,7 @@ describe('RequestGuard', () => {
         'https://example.com/script.js',
       );
       expect(fulfillMock).toHaveBeenCalledWith({ response: mockResponse });
-      expect(guard.getMainDocumentError()).toBeNull();
+      expect(session.getMainDocumentError()).toBeNull();
     });
 
     it('aborts blocked subresource without failing main document', async () => {
@@ -160,7 +161,7 @@ describe('RequestGuard', () => {
       await routeHandler(mockRoute);
 
       expect(abortMock).toHaveBeenCalledWith('blockedbyclient');
-      expect(guard.getMainDocumentError()).toBeNull();
+      expect(session.getMainDocumentError()).toBeNull();
     });
 
     it('aborts blocked iframe navigation without failing main document', async () => {
@@ -184,13 +185,13 @@ describe('RequestGuard', () => {
       await routeHandler(mockRoute);
 
       expect(abortMock).toHaveBeenCalledWith('blockedbyclient');
-      expect(guard.getMainDocumentError()).toBeNull();
+      expect(session.getMainDocumentError()).toBeNull();
     });
   });
 
   describe('main document navigation requests', () => {
     beforeEach(async () => {
-      await guard.install(mockContext);
+      session = await guard.install(mockContext);
     });
 
     it('records BlockedUrlError when initial document URL is blocked', async () => {
@@ -210,7 +211,7 @@ describe('RequestGuard', () => {
       await routeHandler(mockRoute);
 
       expect(abortMock).toHaveBeenCalledWith('blockedbyclient');
-      expect(guard.getMainDocumentError()).toBeInstanceOf(BlockedUrlError);
+      expect(session.getMainDocumentError()).toBeInstanceOf(BlockedUrlError);
     });
 
     it('records InvalidUrlError when document URL is invalid', async () => {
@@ -230,7 +231,7 @@ describe('RequestGuard', () => {
       await routeHandler(mockRoute);
 
       expect(abortMock).toHaveBeenCalledWith('blockedbyclient');
-      expect(guard.getMainDocumentError()).toBeInstanceOf(InvalidUrlError);
+      expect(session.getMainDocumentError()).toBeInstanceOf(InvalidUrlError);
     });
 
     it('records BlockedUrlError when document redirects to a blocked URL', async () => {
@@ -271,7 +272,7 @@ describe('RequestGuard', () => {
       await routeHandler(mockRoute);
 
       expect(abortMock).toHaveBeenCalledWith('blockedbyclient');
-      expect(guard.getMainDocumentError()).toBeInstanceOf(BlockedUrlError);
+      expect(session.getMainDocumentError()).toBeInstanceOf(BlockedUrlError);
     });
 
     it('allows document navigation when redirect chain is fully safe', async () => {
@@ -305,7 +306,75 @@ describe('RequestGuard', () => {
       expect(fulfillMock).toHaveBeenCalledWith({
         response: mockFinalResponse,
       });
-      expect(guard.getMainDocumentError()).toBeNull();
+      expect(session.getMainDocumentError()).toBeNull();
+    });
+
+    it('isolates state across concurrent sessions', async () => {
+      let routeHandler1!: (route: Route) => Promise<void>;
+      let routeHandler2!: (route: Route) => Promise<void>;
+
+      const context1 = {
+        route: jest.fn((_p: string, h: (route: Route) => Promise<void>) => {
+          routeHandler1 = h;
+          return Promise.resolve();
+        }),
+        routeWebSocket: jest.fn().mockResolvedValue(undefined),
+      } as unknown as BrowserContext;
+
+      const context2 = {
+        route: jest.fn((_p: string, h: (route: Route) => Promise<void>) => {
+          routeHandler2 = h;
+          return Promise.resolve();
+        }),
+        routeWebSocket: jest.fn().mockResolvedValue(undefined),
+      } as unknown as BrowserContext;
+
+      const session1 = await guard.install(context1);
+      const session2 = await guard.install(context2);
+
+      mockSafetyService.assertSafeUrl.mockImplementation((url: string) => {
+        if (url.includes('evil')) {
+          return Promise.reject(new BlockedUrlError());
+        }
+        return Promise.resolve({ url: new URL(url), ip: '93.184.216.34' });
+      });
+
+      // Context 1 triggers blocked URL
+      const route1 = {
+        request: () =>
+          ({
+            resourceType: () => 'document',
+            url: () => 'http://127.0.0.1/evil',
+            isNavigationRequest: () => true,
+          }) as unknown as Request,
+        abort: jest.fn().mockResolvedValue(undefined),
+      } as unknown as Route;
+      await routeHandler1(route1);
+
+      // Context 2 triggers safe URL
+      const route2 = {
+        request: () =>
+          ({
+            resourceType: () => 'document',
+            url: () => 'https://example.com/safe',
+            isNavigationRequest: () => true,
+            headers: () => ({}),
+            method: () => 'GET',
+            postDataBuffer: () => null,
+          }) as unknown as Request,
+        fetch: jest.fn().mockResolvedValue({
+          status: () => 200,
+          headers: () => ({}),
+        }),
+        fulfill: jest.fn().mockResolvedValue(undefined),
+      } as unknown as Route;
+      await routeHandler2(route2);
+
+      expect(session1.getMainDocumentError()).toBeInstanceOf(BlockedUrlError);
+      expect(session2.getMainDocumentError()).toBeNull();
+      expect(session2.getMainDocumentFinalUrl()).toBe(
+        'https://example.com/safe',
+      );
     });
   });
 });

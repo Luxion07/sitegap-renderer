@@ -39,13 +39,13 @@ export class RenderService {
 
     try {
       return await this.browserService.withContext(async (context) => {
-        await this.requestGuard.install(context);
+        const guardSession = await this.requestGuard.install(context);
 
         const page = await context.newPage();
         try {
           await page.goto(url, { waitUntil: 'load', timeout });
         } catch (err) {
-          const mainDocumentError = this.requestGuard.getMainDocumentError();
+          const mainDocumentError = guardSession.getMainDocumentError();
           if (mainDocumentError) {
             throw mainDocumentError;
           }
@@ -57,14 +57,13 @@ export class RenderService {
           throw err;
         }
 
-        const mainDocumentError = this.requestGuard.getMainDocumentError();
+        const mainDocumentError = guardSession.getMainDocumentError();
         if (mainDocumentError) {
           throw mainDocumentError;
         }
 
         const text = await this.textExtractor.extract(page);
-        const finalUrl =
-          this.requestGuard.getMainDocumentFinalUrl() ?? page.url();
+        const finalUrl = guardSession.getMainDocumentFinalUrl() ?? page.url();
 
         return { text, finalUrl };
       });

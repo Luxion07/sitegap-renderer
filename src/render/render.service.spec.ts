@@ -12,10 +12,12 @@ describe('RenderService', () => {
   let service: RenderService;
   let slotLimiter: SlotLimiter;
   let mockBrowserService: { withContext: jest.Mock };
-  let mockRequestGuard: {
-    install: jest.Mock;
+  let mockGuardSession: {
     getMainDocumentError: jest.Mock;
     getMainDocumentFinalUrl: jest.Mock;
+  };
+  let mockRequestGuard: {
+    install: jest.Mock;
   };
   let mockTextExtractor: { extract: jest.Mock };
 
@@ -26,10 +28,13 @@ describe('RenderService', () => {
       withContext: jest.fn(),
     };
 
-    mockRequestGuard = {
-      install: jest.fn().mockResolvedValue(undefined),
+    mockGuardSession = {
       getMainDocumentError: jest.fn().mockReturnValue(null),
       getMainDocumentFinalUrl: jest.fn().mockReturnValue(null),
+    };
+
+    mockRequestGuard = {
+      install: jest.fn().mockResolvedValue(mockGuardSession),
     };
 
     mockTextExtractor = {
@@ -113,7 +118,7 @@ describe('RenderService', () => {
         },
       );
 
-      mockRequestGuard.getMainDocumentFinalUrl.mockReturnValue(
+      mockGuardSession.getMainDocumentFinalUrl.mockReturnValue(
         'https://example.com/redirect-target',
       );
 
@@ -202,7 +207,7 @@ describe('RenderService', () => {
   describe('SSRF Guard errors', () => {
     it('throws BlockedUrlError when main document is blocked and releases slot', async () => {
       const blockedError = new BlockedUrlError();
-      mockRequestGuard.getMainDocumentError.mockReturnValue(blockedError);
+      mockGuardSession.getMainDocumentError.mockReturnValue(blockedError);
 
       const navError = new Error('net::ERR_BLOCKED_BY_CLIENT');
       const mockPage = {

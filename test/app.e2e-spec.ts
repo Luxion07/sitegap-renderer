@@ -257,4 +257,24 @@ describe('Renderer gRPC e2e', () => {
       details: 'This URL cannot be analyzed for security reasons.',
     });
   });
+
+  it('handles concurrent renders correctly when one is blocked and one succeeds', async () => {
+    const safePromise = sendRenderRequest({
+      url: `http://127.0.0.1:${allowedPort}/js-rendered`,
+    });
+    const blockedPromise = sendRenderRequest({
+      url: `http://127.0.0.1:${forbiddenPort}/secret`,
+    });
+
+    const [safeResult, blockedError] = await Promise.all([
+      safePromise,
+      blockedPromise.catch((err: unknown) => err),
+    ]);
+
+    expect(safeResult.text).toBe('Rendered dynamically by JavaScript');
+    expect(blockedError).toMatchObject({
+      code: grpc.status.PERMISSION_DENIED,
+      details: 'This URL cannot be analyzed for security reasons.',
+    });
+  });
 });

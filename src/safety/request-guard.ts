@@ -7,33 +7,26 @@ const MAX_REDIRECTS = 10;
 
 @Injectable()
 export class RequestGuard {
-  private mainDocumentError: Error | null = null;
-  private mainDocumentFinalUrl: string | null = null;
-
   constructor(private readonly urlSafetyService: UrlSafetyService) {}
 
-  getMainDocumentError(): Error | null {
-    return this.mainDocumentError;
-  }
-
-  getMainDocumentFinalUrl(): string | null {
-    return this.mainDocumentFinalUrl;
-  }
-
-  async install(context: BrowserContext): Promise<void> {
-    this.mainDocumentError = null;
-    this.mainDocumentFinalUrl = null;
+  async install(context: BrowserContext): Promise<GuardSession> {
+    const session = new GuardSession();
 
     await context.routeWebSocket('**/*', (ws) => {
       void ws.close();
     });
 
     await context.route('**/*', async (route) => {
-      await this.handleRoute(route);
+      await this.handleRoute(route, session);
     });
+
+    return session;
   }
 
-  private async handleRoute(route: Route): Promise<void> {
+  private async handleRoute(
+    route: Route,
+    session: GuardSession,
+  ): Promise<void> {
     const request = route.request();
     const isMainDocument =
       request.isNavigationRequest() &&
@@ -52,8 +45,9 @@ export class RequestGuard {
       await this.urlSafetyService.assertSafeUrl(currentUrl);
     } catch (err) {
       if (isMainDocument) {
-        this.mainDocumentError =
-          err instanceof Error ? err : new Error(String(err));
+        session.setMainDocumentError(
+          err instanceof Error ? err : new Error(String(err)),
+        );
       }
       await route.abort('blockedbyclient');
       return;
@@ -85,7 +79,7 @@ export class RequestGuard {
         redirectCount++;
         if (redirectCount > MAX_REDIRECTS) {
           if (isMainDocument) {
-            this.mainDocumentError = new Error('Too many redirects');
+            session.setMainDocumentError(new Error('Too many redirects'));
           }
           await route.abort('failed');
           return;
@@ -94,7 +88,7 @@ export class RequestGuard {
         const location = response.headers()['location'];
         if (!location) {
           if (isMainDocument) {
-            this.mainDocumentFinalUrl = redirectUrl;
+            session.setMainDocumentFinalUrl(redirectUrl);
           }
           await route.fulfill({ response });
           return;
@@ -105,8 +99,9 @@ export class RequestGuard {
           await this.urlSafetyService.assertSafeUrl(nextUrl);
         } catch (err) {
           if (isMainDocument) {
-            this.mainDocumentError =
-              err instanceof Error ? err : new Error(String(err));
+            session.setMainDocumentError(
+              err instanceof Error ? err : new Error(String(err)),
+            );
           }
           await route.abort('blockedbyclient');
           return;
@@ -119,11 +114,32 @@ export class RequestGuard {
       }
 
       if (isMainDocument) {
-        this.mainDocumentFinalUrl = redirectUrl;
+        session.setMainDocumentFinalUrl(redirectUrl);
       }
 
       await route.fulfill({ response });
       return;
     }
+  }
+}
+
+export class GuardSession {
+  private mainDocumentError: Error | null = null;
+  private mainDocumentFinalUrl: string | null = null;
+
+  getMainDocumentError(): Error | null {
+    return this.mainDocumentError;
+  }
+
+  setMainDocumentError(error: Error | null): void {
+    this.mainDocumentError = error;
+  }
+
+  getMainDocumentFinalUrl(): string | null {
+    return this.mainDocumentFinalUrl;
+  }
+
+  setMainDocumentFinalUrl(url: string | null): void {
+    this.mainDocumentFinalUrl = url;
   }
 }
