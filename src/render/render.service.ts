@@ -101,8 +101,7 @@ export class RenderService {
         }
 
         const text = await this.textExtractor.extract(page);
-        const finalUrl =
-          page.url() || guardSession.getMainDocumentFinalUrl() || currentUrl;
+        const finalUrl = page.url();
 
         return { text, finalUrl };
       });

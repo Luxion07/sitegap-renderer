@@ -14,7 +14,6 @@ describe('RenderService', () => {
   let mockBrowserService: { withContext: jest.Mock };
   let mockGuardSession: {
     getMainDocumentError: jest.Mock;
-    getMainDocumentFinalUrl: jest.Mock;
     consumeRedirectTarget: jest.Mock;
   };
   let mockRequestGuard: {
@@ -33,7 +32,6 @@ describe('RenderService', () => {
 
     mockGuardSession = {
       getMainDocumentError: jest.fn().mockReturnValue(null),
-      getMainDocumentFinalUrl: jest.fn().mockReturnValue(null),
       consumeRedirectTarget: jest.fn().mockReturnValue(null),
     };
 
@@ -151,6 +149,36 @@ describe('RenderService', () => {
         expect.any(Object),
       );
       expect(result.finalUrl).toBe('https://example.com/redirect-target');
+    });
+
+    it('throws error when redirects exceed 10 hops', async () => {
+      let gotoCalls = 0;
+      const mockPage = {
+        goto: jest.fn().mockImplementation(() => {
+          gotoCalls++;
+          mockGuardSession.consumeRedirectTarget.mockReturnValueOnce(
+            `https://example.com/redirect-${gotoCalls}`,
+          );
+          return Promise.reject(new Error('page.goto: net::ERR_ABORTED'));
+        }),
+        url: jest.fn().mockReturnValue('https://example.com/start'),
+      };
+
+      const mockContext = {
+        newPage: jest.fn().mockResolvedValue(mockPage),
+      };
+
+      mockBrowserService.withContext.mockImplementation(
+        async (callback: (ctx: unknown) => Promise<unknown>) => {
+          return callback(mockContext);
+        },
+      );
+
+      await expect(service.render('https://example.com/start')).rejects.toThrow(
+        'Too many redirects',
+      );
+      expect(mockPage.goto).toHaveBeenCalledTimes(11);
+      expect(slotLimiter.active).toBe(0);
     });
   });
 

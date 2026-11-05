@@ -29,10 +29,7 @@ export class RequestGuard {
   ): Promise<void> {
     const request = route.request();
     const isMainDocument =
-      request.isNavigationRequest() &&
-      (typeof request.frame === 'function' && request.frame()
-        ? request.frame().parentFrame() === null
-        : true);
+      request.isNavigationRequest() && request.frame().parentFrame() === null;
     const resourceType = request.resourceType();
 
     if (BLOCKED_RESOURCE_TYPES.has(resourceType)) {
@@ -72,7 +69,6 @@ export class RequestGuard {
       if (status >= 300 && status < 400) {
         const location = response.headers()['location'];
         if (!location) {
-          session.setMainDocumentFinalUrl(currentUrl);
           await route.fulfill({ response });
           return;
         }
@@ -93,7 +89,6 @@ export class RequestGuard {
         return;
       }
 
-      session.setMainDocumentFinalUrl(currentUrl);
       await route.fulfill({ response });
       return;
     }
@@ -155,7 +150,6 @@ export class RequestGuard {
 
 export class GuardSession {
   private mainDocumentError: Error | null = null;
-  private mainDocumentFinalUrl: string | null = null;
   private redirectTarget: string | null = null;
 
   getMainDocumentError(): Error | null {
@@ -164,14 +158,6 @@ export class GuardSession {
 
   setMainDocumentError(error: Error | null): void {
     this.mainDocumentError = error;
-  }
-
-  getMainDocumentFinalUrl(): string | null {
-    return this.mainDocumentFinalUrl;
-  }
-
-  setMainDocumentFinalUrl(url: string | null): void {
-    this.mainDocumentFinalUrl = url;
   }
 
   getRedirectTarget(): string | null {

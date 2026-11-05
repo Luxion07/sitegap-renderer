@@ -204,6 +204,7 @@ describe('RequestGuard', () => {
             resourceType: () => 'document',
             url: () => 'http://127.0.0.1:8080/admin',
             isNavigationRequest: () => true,
+            frame: () => ({ parentFrame: () => null }) as unknown as Frame,
           }) as unknown as Request,
         abort: abortMock,
       } as unknown as Route;
@@ -224,6 +225,7 @@ describe('RequestGuard', () => {
             resourceType: () => 'document',
             url: () => 'https://non-existent-domain-xyz.local',
             isNavigationRequest: () => true,
+            frame: () => ({ parentFrame: () => null }) as unknown as Frame,
           }) as unknown as Request,
         abort: abortMock,
       } as unknown as Route;
@@ -261,6 +263,7 @@ describe('RequestGuard', () => {
             resourceType: () => 'document',
             url: () => 'https://example.com/start',
             isNavigationRequest: () => true,
+            frame: () => ({ parentFrame: () => null }) as unknown as Frame,
             headers: () => ({}),
             method: () => 'GET',
             postDataBuffer: () => null,
@@ -295,6 +298,7 @@ describe('RequestGuard', () => {
             resourceType: () => 'document',
             url: () => 'https://example.com/start',
             isNavigationRequest: () => true,
+            frame: () => ({ parentFrame: () => null }) as unknown as Frame,
             headers: () => ({}),
             method: () => 'GET',
             postDataBuffer: () => null,
@@ -328,6 +332,7 @@ describe('RequestGuard', () => {
             resourceType: () => 'document',
             url: () => 'https://example.com/final',
             isNavigationRequest: () => true,
+            frame: () => ({ parentFrame: () => null }) as unknown as Frame,
             headers: () => ({}),
             method: () => 'GET',
             postDataBuffer: () => null,
@@ -381,6 +386,7 @@ describe('RequestGuard', () => {
             resourceType: () => 'document',
             url: () => 'http://127.0.0.1/evil',
             isNavigationRequest: () => true,
+            frame: () => ({ parentFrame: () => null }) as unknown as Frame,
           }) as unknown as Request,
         abort: jest.fn().mockResolvedValue(undefined),
       } as unknown as Route;
@@ -393,6 +399,7 @@ describe('RequestGuard', () => {
             resourceType: () => 'document',
             url: () => 'https://example.com/safe',
             isNavigationRequest: () => true,
+            frame: () => ({ parentFrame: () => null }) as unknown as Frame,
             headers: () => ({}),
             method: () => 'GET',
             postDataBuffer: () => null,
@@ -407,9 +414,6 @@ describe('RequestGuard', () => {
 
       expect(session1.getMainDocumentError()).toBeInstanceOf(BlockedUrlError);
       expect(session2.getMainDocumentError()).toBeNull();
-      expect(session2.getMainDocumentFinalUrl()).toBe(
-        'https://example.com/safe',
-      );
     });
   });
 });
