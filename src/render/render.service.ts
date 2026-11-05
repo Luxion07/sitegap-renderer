@@ -7,6 +7,8 @@ import { SlotsBusyError } from './errors/slots-busy.error';
 import { RenderTimeoutError } from './errors/render-timeout.error';
 import { validateEnv } from '../config/env.validation';
 
+const MAX_REDIRECTS = 10;
+
 export interface RenderResult {
   text: string;
   finalUrl: string;
@@ -32,39 +34,74 @@ export class RenderService {
       throw new SlotsBusyError();
     }
 
-    const timeout =
+    const deadlineTimeout =
       deadlineMs !== undefined
         ? Math.min(deadlineMs, this.maxRenderMs)
         : this.maxRenderMs;
+    const renderStartTime = Date.now();
 
     try {
       return await this.browserService.withContext(async (context) => {
-        await this.requestGuard.install(context);
+        const guardSession = await this.requestGuard.install(context);
 
         const page = await context.newPage();
-        try {
-          await page.goto(url, { waitUntil: 'load', timeout });
-        } catch (err) {
-          const mainDocumentError = this.requestGuard.getMainDocumentError();
+        let currentUrl = url;
+        let hops = 0;
+
+        while (true) {
+          const remainingTimeout = Math.max(
+            1,
+            deadlineTimeout - (Date.now() - renderStartTime),
+          );
+
+          try {
+            await page.goto(currentUrl, {
+              waitUntil: 'load',
+              timeout: remainingTimeout,
+            });
+          } catch (err) {
+            const redirectTarget = guardSession.consumeRedirectTarget();
+            if (redirectTarget) {
+              hops++;
+              if (hops > MAX_REDIRECTS) {
+                throw new Error('Too many redirects');
+              }
+              currentUrl = redirectTarget;
+              continue;
+            }
+
+            const mainDocumentError = guardSession.getMainDocumentError();
+            if (mainDocumentError) {
+              throw mainDocumentError;
+            }
+
+            if (this.isTimeoutError(err)) {
+              throw new RenderTimeoutError();
+            }
+
+            throw err;
+          }
+
+          const redirectTarget = guardSession.consumeRedirectTarget();
+          if (redirectTarget) {
+            hops++;
+            if (hops > MAX_REDIRECTS) {
+              throw new Error('Too many redirects');
+            }
+            currentUrl = redirectTarget;
+            continue;
+          }
+
+          const mainDocumentError = guardSession.getMainDocumentError();
           if (mainDocumentError) {
             throw mainDocumentError;
           }
 
-          if (this.isTimeoutError(err)) {
-            throw new RenderTimeoutError();
-          }
-
-          throw err;
-        }
-
-        const mainDocumentError = this.requestGuard.getMainDocumentError();
-        if (mainDocumentError) {
-          throw mainDocumentError;
+          break;
         }
 
         const text = await this.textExtractor.extract(page);
-        const finalUrl =
-          this.requestGuard.getMainDocumentFinalUrl() ?? page.url();
+        const finalUrl = page.url();
 
         return { text, finalUrl };
       });

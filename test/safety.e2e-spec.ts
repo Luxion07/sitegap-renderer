@@ -69,6 +69,20 @@ describe('SSRF Guard e2e', () => {
         return;
       }
 
+      if (req.url === '/safe-page-with-iframe') {
+        res.writeHead(200, { 'Content-Type': 'text/html' });
+        res.end(`
+          <!DOCTYPE html>
+          <html>
+            <body>
+              <h1>Safe Content With Iframe</h1>
+              <iframe src="http://127.0.0.1:${forbiddenPort}/forbidden-iframe"></iframe>
+            </body>
+          </html>
+        `);
+        return;
+      }
+
       if (req.url === '/redirect-to-safe') {
         res.writeHead(302, {
           Location: `http://127.0.0.1:${allowedPort}/safe-page`,
@@ -121,7 +135,7 @@ describe('SSRF Guard e2e', () => {
   it('blocks subresource requests to loopback while allowing page to render', async () => {
     await browserService.withContext(async (context) => {
       const guard = moduleRef.get(RequestGuard);
-      await guard.install(context);
+      const session = await guard.install(context);
 
       const page = await context.newPage();
       await page.goto(`http://127.0.0.1:${allowedPort}/safe-page`);
@@ -132,14 +146,32 @@ describe('SSRF Guard e2e', () => {
       const heading = await page.textContent('h1');
       expect(heading).toBe('Safe Content');
       expect(forbiddenHits).toBe(0);
-      expect(guard.getMainDocumentError()).toBeNull();
+      expect(session.getMainDocumentError()).toBeNull();
+    });
+  });
+
+  it('blocks iframe requests to loopback while allowing page to render', async () => {
+    await browserService.withContext(async (context) => {
+      const guard = moduleRef.get(RequestGuard);
+      const session = await guard.install(context);
+
+      const page = await context.newPage();
+      await page.goto(`http://127.0.0.1:${allowedPort}/safe-page-with-iframe`);
+
+      // Give iframe navigation a moment to be intercepted
+      await page.waitForTimeout(200);
+
+      const heading = await page.textContent('h1');
+      expect(heading).toBe('Safe Content With Iframe');
+      expect(forbiddenHits).toBe(0);
+      expect(session.getMainDocumentError()).toBeNull();
     });
   });
 
   it('blocks navigation when redirect points to a loopback address', async () => {
     await browserService.withContext(async (context) => {
       const guard = moduleRef.get(RequestGuard);
-      await guard.install(context);
+      const session = await guard.install(context);
 
       const page = await context.newPage();
       await expect(
@@ -147,21 +179,28 @@ describe('SSRF Guard e2e', () => {
       ).rejects.toThrow();
 
       expect(forbiddenHits).toBe(0);
-      expect(guard.getMainDocumentError()).toBeInstanceOf(BlockedUrlError);
+      expect(session.getMainDocumentError()).toBeInstanceOf(BlockedUrlError);
     });
   });
 
   it('allows navigation when redirect points to a safe address', async () => {
     await browserService.withContext(async (context) => {
       const guard = moduleRef.get(RequestGuard);
-      await guard.install(context);
+      const session = await guard.install(context);
 
       const page = await context.newPage();
-      await page.goto(`http://127.0.0.1:${allowedPort}/redirect-to-safe`);
+      try {
+        await page.goto(`http://127.0.0.1:${allowedPort}/redirect-to-safe`);
+      } catch {
+        const nextUrl = session.consumeRedirectTarget();
+        if (nextUrl) {
+          await page.goto(nextUrl);
+        }
+      }
 
       const heading = await page.textContent('h1');
       expect(heading).toBe('Safe Content');
-      expect(guard.getMainDocumentError()).toBeNull();
+      expect(session.getMainDocumentError()).toBeNull();
     });
   });
 });

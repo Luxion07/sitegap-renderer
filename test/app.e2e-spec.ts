@@ -130,6 +130,36 @@ describe('Renderer gRPC e2e', () => {
         return;
       }
 
+      if (req.url === '/redirect-to-relative') {
+        res.writeHead(302, {
+          Location: `http://127.0.0.1:${allowedPort}/subpath/page-with-script`,
+        });
+        res.end();
+        return;
+      }
+
+      if (req.url === '/subpath/page-with-script') {
+        res.writeHead(200, { 'Content-Type': 'text/html' });
+        res.end(`
+          <!DOCTYPE html>
+          <html>
+            <body>
+              <div id="content">Initial Text</div>
+              <script src="relative-script.js"></script>
+            </body>
+          </html>
+        `);
+        return;
+      }
+
+      if (req.url === '/subpath/relative-script.js') {
+        res.writeHead(200, { 'Content-Type': 'application/javascript' });
+        res.end(`
+          document.getElementById('content').textContent = 'Loaded from relative script';
+        `);
+        return;
+      }
+
       if (req.url === '/redirect-to-blocked') {
         res.writeHead(302, {
           Location: `http://127.0.0.1:${forbiddenPort}/secret`,
@@ -228,6 +258,18 @@ describe('Renderer gRPC e2e', () => {
     expect(finalUrl).toBe(`http://127.0.0.1:${allowedPort}/redirect-target`);
   });
 
+  it('follows redirect and resolves relative script correctly', async () => {
+    const response = await sendRenderRequest({
+      url: `http://127.0.0.1:${allowedPort}/redirect-to-relative`,
+    });
+
+    expect(response.text).toBe('Loaded from relative script');
+    const finalUrl = response.final_url ?? response.finalUrl;
+    expect(finalUrl).toBe(
+      `http://127.0.0.1:${allowedPort}/subpath/page-with-script`,
+    );
+  });
+
   it('returns INVALID_ARGUMENT when URL format is invalid', async () => {
     await expect(
       sendRenderRequest({ url: 'not-a-valid-url' }),
@@ -253,6 +295,26 @@ describe('Renderer gRPC e2e', () => {
         url: `http://127.0.0.1:${allowedPort}/redirect-to-blocked`,
       }),
     ).rejects.toMatchObject({
+      code: grpc.status.PERMISSION_DENIED,
+      details: 'This URL cannot be analyzed for security reasons.',
+    });
+  });
+
+  it('handles concurrent renders correctly when one is blocked and one succeeds', async () => {
+    const safePromise = sendRenderRequest({
+      url: `http://127.0.0.1:${allowedPort}/js-rendered`,
+    });
+    const blockedPromise = sendRenderRequest({
+      url: `http://127.0.0.1:${forbiddenPort}/secret`,
+    });
+
+    const [safeResult, blockedError] = await Promise.all([
+      safePromise,
+      blockedPromise.catch((err: unknown) => err),
+    ]);
+
+    expect(safeResult.text).toBe('Rendered dynamically by JavaScript');
+    expect(blockedError).toMatchObject({
       code: grpc.status.PERMISSION_DENIED,
       details: 'This URL cannot be analyzed for security reasons.',
     });

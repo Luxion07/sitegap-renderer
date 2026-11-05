@@ -29,4 +29,8 @@ jobs:
 
       - run: pnpm exec playwright install --with-deps chromium
 
+      # Ubuntu 24.04 restricts unprivileged user namespaces by default, which blocks Chromium sandbox
+      - name: Enable unprivileged user namespaces for Chromium sandbox
+        run: sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
+
       - run: pnpm test:e2e

@@ -7,35 +7,29 @@ const MAX_REDIRECTS = 10;
 
 @Injectable()
 export class RequestGuard {
-  private mainDocumentError: Error | null = null;
-  private mainDocumentFinalUrl: string | null = null;
-
   constructor(private readonly urlSafetyService: UrlSafetyService) {}
 
-  getMainDocumentError(): Error | null {
-    return this.mainDocumentError;
-  }
-
-  getMainDocumentFinalUrl(): string | null {
-    return this.mainDocumentFinalUrl;
-  }
-
-  async install(context: BrowserContext): Promise<void> {
-    this.mainDocumentError = null;
-    this.mainDocumentFinalUrl = null;
+  async install(context: BrowserContext): Promise<GuardSession> {
+    const session = new GuardSession();
 
     await context.routeWebSocket('**/*', (ws) => {
       void ws.close();
     });
 
     await context.route('**/*', async (route) => {
-      await this.handleRoute(route);
+      await this.handleRoute(route, session);
     });
+
+    return session;
   }
 
-  private async handleRoute(route: Route): Promise<void> {
+  private async handleRoute(
+    route: Route,
+    session: GuardSession,
+  ): Promise<void> {
     const request = route.request();
-    const isNavigation = request.isNavigationRequest();
+    const isMainDocument =
+      request.isNavigationRequest() && request.frame().parentFrame() === null;
     const resourceType = request.resourceType();
 
     if (BLOCKED_RESOURCE_TYPES.has(resourceType)) {
@@ -47,11 +41,55 @@ export class RequestGuard {
     try {
       await this.urlSafetyService.assertSafeUrl(currentUrl);
     } catch (err) {
-      if (isNavigation) {
-        this.mainDocumentError =
-          err instanceof Error ? err : new Error(String(err));
+      if (isMainDocument) {
+        session.setMainDocumentError(
+          err instanceof Error ? err : new Error(String(err)),
+        );
       }
       await route.abort('blockedbyclient');
+      return;
+    }
+
+    if (isMainDocument) {
+      let response;
+      try {
+        response = await route.fetch({
+          url: currentUrl,
+          method: request.method(),
+          headers: request.headers(),
+          postData: request.postDataBuffer() ?? undefined,
+          maxRedirects: 0,
+        });
+      } catch {
+        await route.abort('failed');
+        return;
+      }
+
+      const status = response.status();
+      if (status >= 300 && status < 400) {
+        const location = response.headers()['location'];
+        if (!location) {
+          await route.fulfill({ response });
+          return;
+        }
+
+        const nextUrl = new URL(location, currentUrl).href;
+        try {
+          await this.urlSafetyService.assertSafeUrl(nextUrl);
+        } catch (err) {
+          session.setMainDocumentError(
+            err instanceof Error ? err : new Error(String(err)),
+          );
+          await route.abort('blockedbyclient');
+          return;
+        }
+
+        session.setRedirectTarget(nextUrl);
+        await route.abort('aborted');
+        return;
+      }
+
+      await route.fulfill({ response });
       return;
     }
 
@@ -80,18 +118,12 @@ export class RequestGuard {
       if (status >= 300 && status < 400) {
         redirectCount++;
         if (redirectCount > MAX_REDIRECTS) {
-          if (isNavigation) {
-            this.mainDocumentError = new Error('Too many redirects');
-          }
           await route.abort('failed');
           return;
         }
 
         const location = response.headers()['location'];
         if (!location) {
-          if (isNavigation) {
-            this.mainDocumentFinalUrl = redirectUrl;
-          }
           await route.fulfill({ response });
           return;
         }
@@ -99,11 +131,7 @@ export class RequestGuard {
         const nextUrl = new URL(location, redirectUrl).href;
         try {
           await this.urlSafetyService.assertSafeUrl(nextUrl);
-        } catch (err) {
-          if (isNavigation) {
-            this.mainDocumentError =
-              err instanceof Error ? err : new Error(String(err));
-          }
+        } catch {
           await route.abort('blockedbyclient');
           return;
         }
@@ -114,12 +142,35 @@ export class RequestGuard {
         continue;
       }
 
-      if (isNavigation) {
-        this.mainDocumentFinalUrl = redirectUrl;
-      }
-
       await route.fulfill({ response });
       return;
     }
+  }
+}
+
+export class GuardSession {
+  private mainDocumentError: Error | null = null;
+  private redirectTarget: string | null = null;
+
+  getMainDocumentError(): Error | null {
+    return this.mainDocumentError;
+  }
+
+  setMainDocumentError(error: Error | null): void {
+    this.mainDocumentError = error;
+  }
+
+  getRedirectTarget(): string | null {
+    return this.redirectTarget;
+  }
+
+  setRedirectTarget(url: string | null): void {
+    this.redirectTarget = url;
+  }
+
+  consumeRedirectTarget(): string | null {
+    const target = this.redirectTarget;
+    this.redirectTarget = null;
+    return target;
   }
 }

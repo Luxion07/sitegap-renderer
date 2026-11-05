@@ -12,24 +12,31 @@ describe('RenderService', () => {
   let service: RenderService;
   let slotLimiter: SlotLimiter;
   let mockBrowserService: { withContext: jest.Mock };
+  let mockGuardSession: {
+    getMainDocumentError: jest.Mock;
+    consumeRedirectTarget: jest.Mock;
+  };
   let mockRequestGuard: {
     install: jest.Mock;
-    getMainDocumentError: jest.Mock;
-    getMainDocumentFinalUrl: jest.Mock;
   };
   let mockTextExtractor: { extract: jest.Mock };
 
   beforeEach(async () => {
+    jest.spyOn(Date, 'now').mockReturnValue(1_000_000);
+
     slotLimiter = new SlotLimiter(1);
 
     mockBrowserService = {
       withContext: jest.fn(),
     };
 
-    mockRequestGuard = {
-      install: jest.fn().mockResolvedValue(undefined),
+    mockGuardSession = {
       getMainDocumentError: jest.fn().mockReturnValue(null),
-      getMainDocumentFinalUrl: jest.fn().mockReturnValue(null),
+      consumeRedirectTarget: jest.fn().mockReturnValue(null),
+    };
+
+    mockRequestGuard = {
+      install: jest.fn().mockResolvedValue(mockGuardSession),
     };
 
     mockTextExtractor = {
@@ -47,6 +54,10 @@ describe('RenderService', () => {
     }).compile();
 
     service = module.get<RenderService>(RenderService);
+  });
+
+  afterEach(() => {
+    jest.restoreAllMocks();
   });
 
   describe('Bounded Concurrency', () => {
@@ -97,9 +108,59 @@ describe('RenderService', () => {
       expect(slotLimiter.active).toBe(0);
     });
 
-    it('uses final redirected URL from request guard when redirects occurred', async () => {
+    it('follows redirects using page.goto loop and returns final redirected URL', async () => {
+      let gotoCalls = 0;
       const mockPage = {
-        goto: jest.fn().mockResolvedValue(undefined),
+        goto: jest.fn().mockImplementation((targetUrl: string) => {
+          gotoCalls++;
+          if (gotoCalls === 1) {
+            mockGuardSession.consumeRedirectTarget.mockReturnValueOnce(
+              'https://example.com/redirect-target',
+            );
+            return Promise.reject(new Error('page.goto: net::ERR_ABORTED'));
+          }
+          mockPage.url.mockReturnValue(targetUrl);
+          return Promise.resolve();
+        }),
+        url: jest.fn().mockReturnValue('https://example.com/redirect-target'),
+      };
+
+      const mockContext = {
+        newPage: jest.fn().mockResolvedValue(mockPage),
+      };
+
+      mockBrowserService.withContext.mockImplementation(
+        async (callback: (ctx: unknown) => Promise<unknown>) => {
+          return callback(mockContext);
+        },
+      );
+
+      const result = await service.render('https://example.com/start');
+
+      expect(mockPage.goto).toHaveBeenCalledTimes(2);
+      expect(mockPage.goto).toHaveBeenNthCalledWith(
+        1,
+        'https://example.com/start',
+        expect.any(Object),
+      );
+      expect(mockPage.goto).toHaveBeenNthCalledWith(
+        2,
+        'https://example.com/redirect-target',
+        expect.any(Object),
+      );
+      expect(result.finalUrl).toBe('https://example.com/redirect-target');
+    });
+
+    it('throws error when redirects exceed 10 hops', async () => {
+      let gotoCalls = 0;
+      const mockPage = {
+        goto: jest.fn().mockImplementation(() => {
+          gotoCalls++;
+          mockGuardSession.consumeRedirectTarget.mockReturnValueOnce(
+            `https://example.com/redirect-${gotoCalls}`,
+          );
+          return Promise.reject(new Error('page.goto: net::ERR_ABORTED'));
+        }),
         url: jest.fn().mockReturnValue('https://example.com/start'),
       };
 
@@ -113,13 +174,11 @@ describe('RenderService', () => {
         },
       );
 
-      mockRequestGuard.getMainDocumentFinalUrl.mockReturnValue(
-        'https://example.com/redirect-target',
+      await expect(service.render('https://example.com/start')).rejects.toThrow(
+        'Too many redirects',
       );
-
-      const result = await service.render('https://example.com/start');
-
-      expect(result.finalUrl).toBe('https://example.com/redirect-target');
+      expect(mockPage.goto).toHaveBeenCalledTimes(11);
+      expect(slotLimiter.active).toBe(0);
     });
   });
 
@@ -202,7 +261,7 @@ describe('RenderService', () => {
   describe('SSRF Guard errors', () => {
     it('throws BlockedUrlError when main document is blocked and releases slot', async () => {
       const blockedError = new BlockedUrlError();
-      mockRequestGuard.getMainDocumentError.mockReturnValue(blockedError);
+      mockGuardSession.getMainDocumentError.mockReturnValue(blockedError);
 
       const navError = new Error('net::ERR_BLOCKED_BY_CLIENT');
       const mockPage = {
