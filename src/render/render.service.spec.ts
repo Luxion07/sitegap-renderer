@@ -23,6 +23,8 @@ describe('RenderService', () => {
   let mockTextExtractor: { extract: jest.Mock };
 
   beforeEach(async () => {
+    jest.spyOn(Date, 'now').mockReturnValue(1_000_000);
+
     slotLimiter = new SlotLimiter(1);
 
     mockBrowserService = {
@@ -54,6 +56,10 @@ describe('RenderService', () => {
     }).compile();
 
     service = module.get<RenderService>(RenderService);
+  });
+
+  afterEach(() => {
+    jest.restoreAllMocks();
   });
 
   describe('Bounded Concurrency', () => {
