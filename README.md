@@ -146,7 +146,7 @@ If you built the image locally, use `sitegap-renderer` as the image name. `secco
 
 Flags explained:
 - `-p 127.0.0.1:50051:50051`: Publishes the port on the loopback interface only. The service has no authentication, so it must not be reachable from the network.
-- `--security-opt seccomp=seccomp_profile.json`: Applies the official Playwright seccomp profile, enabling Chromium's user namespace sandbox under the unprivileged `pwuser`.
+- `--security-opt seccomp=seccomp_profile.json`: Docker's default seccomp profile ([moby/profiles@4b8214f](https://github.com/moby/profiles/blob/4b8214fc4971e06172938a1f1554ccff6647ee80/seccomp/default.json)) plus one rule that allows `clone`, `setns` and `unshare`, so Chromium can create the user namespace its sandbox needs under the unprivileged `pwuser`. It replaces Playwright's profile, which is based on an older Docker default: newer runc versions crash on start with it.
 - `--shm-size=1gb`: Allocates shared memory for Chromium to prevent browser crashes on complex pages without sharing the host IPC namespace (`--ipc=host` is avoided for security).
 - Non-root user: The container runs under the non-root `pwuser` account.
 - Init process: `tini` is configured as the container entrypoint for signal forwarding and zombie process reaping.
