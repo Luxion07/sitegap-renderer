@@ -296,17 +296,17 @@ item 8).
 
 Tasks:
 
-- [ ] GitHub Actions workflow: when a `v*` tag is pushed, build the
+- [x] GitHub Actions workflow: when a `v*` tag is pushed, build the
       Dockerfile and push it to `ghcr.io/luxion07/sitegap-renderer`
       (tag `v0.1.0` → image `0.1.0`). Log in with `GITHUB_TOKEN`
       (`packages: write`), not a personal token.
-- [ ] Build for `linux/amd64` and `linux/arm64`, so the image also runs
+- [x] Build for `linux/amd64` and `linux/arm64`, so the image also runs
       natively on Apple Silicon.
-- [ ] Label the image with `org.opencontainers.image.source`, so GHCR links
+- [x] Label the image with `org.opencontainers.image.source`, so GHCR links
       the package to this repository.
-- [ ] Make the package public.
-- [ ] Push tag `v0.1.0`.
-- [ ] README: how to pull and run the published image.
+- [x] Make the package public.
+- [x] Push tag `v0.1.0`.
+- [x] README: how to pull and run the published image.
 
 Do not implement:
 

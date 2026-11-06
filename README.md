@@ -6,7 +6,7 @@
 ![Playwright](https://img.shields.io/badge/Playwright-Chromium-2EAD33?logo=playwright&logoColor=white)
 ![gRPC](https://img.shields.io/badge/gRPC-v1-244c5a?logo=grpc&logoColor=white)
 
-> **Status:** Implementation complete (Phases 1–7). See [`TASKS.md`](TASKS.md).
+> **Status:** Implementation complete (Phases 1–8). See [`TASKS.md`](TASKS.md).
 
 A headless Chromium gRPC rendering microservice for [SiteGap AI](https://github.com/Luxion07/sitegap-ai).
 
@@ -115,7 +115,17 @@ grpcurl -plaintext \
 
 ## Docker
 
-### Build
+### Pull the published image
+
+Tagged releases are published to GHCR for `linux/amd64` and `linux/arm64`. No login is needed:
+
+```bash
+docker pull ghcr.io/luxion07/sitegap-renderer:0.1.0
+```
+
+Pushing a tag `vX.Y.Z` publishes image `X.Y.Z` ([`release.yml`](.github/workflows/release.yml)). There is no `latest` tag, so always pin a version.
+
+### Or build it locally
 
 ```bash
 docker build -t sitegap-renderer .
@@ -126,13 +136,16 @@ docker build -t sitegap-renderer .
 ```bash
 docker run -d \
   --name sitegap-renderer \
-  -p 50051:50051 \
+  -p 127.0.0.1:50051:50051 \
   --shm-size=1gb \
   --security-opt seccomp=seccomp_profile.json \
-  sitegap-renderer
+  ghcr.io/luxion07/sitegap-renderer:0.1.0
 ```
 
+If you built the image locally, use `sitegap-renderer` as the image name. `seccomp_profile.json` is in the repository root, so run the command from a clone or pass the path to your copy.
+
 Flags explained:
+- `-p 127.0.0.1:50051:50051`: Publishes the port on the loopback interface only. The service has no authentication, so it must not be reachable from the network.
 - `--security-opt seccomp=seccomp_profile.json`: Applies the official Playwright seccomp profile, enabling Chromium's user namespace sandbox under the unprivileged `pwuser`.
 - `--shm-size=1gb`: Allocates shared memory for Chromium to prevent browser crashes on complex pages without sharing the host IPC namespace (`--ipc=host` is avoided for security).
 - Non-root user: The container runs under the non-root `pwuser` account.
