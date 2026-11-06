@@ -53,8 +53,7 @@ Tasks:
 Acceptance criteria:
 
 - `pnpm test` and `pnpm test:e2e` run locally.
-- CI fails when lint, typecheck or tests fail. The repository has no remote
-  yet, so until then the same commands run locally.
+- CI fails when lint, typecheck or tests fail.
 - New code with branching logic ships with tests in the same phase.
 
 ---
@@ -289,10 +288,43 @@ Acceptance criteria:
 
 ---
 
+## Phase 8 — Publish the Image
+
+Goal: anyone can run the renderer without building it, so sitegap-ai's
+`docker-compose.yml` can pull a pinned image (second half of ADR action
+item 8).
+
+Tasks:
+
+- [ ] GitHub Actions workflow: when a `v*` tag is pushed, build the
+      Dockerfile and push it to `ghcr.io/luxion07/sitegap-renderer`
+      (tag `v0.1.0` → image `0.1.0`). Log in with `GITHUB_TOKEN`
+      (`packages: write`), not a personal token.
+- [ ] Build for `linux/amd64` and `linux/arm64`, so the image also runs
+      natively on Apple Silicon.
+- [ ] Label the image with `org.opencontainers.image.source`, so GHCR links
+      the package to this repository.
+- [ ] Make the package public.
+- [ ] Push tag `v0.1.0`.
+- [ ] README: how to pull and run the published image.
+
+Do not implement:
+
+- Publishing on every push to `main` — only tagged releases.
+- A `latest` tag — consumers pin an exact version.
+
+Acceptance criteria:
+
+- Pushing a `v*` tag publishes the image; a failed build publishes nothing.
+- `docker pull ghcr.io/luxion07/sitegap-renderer:0.1.0` works without
+  `docker login`, on both amd64 and arm64.
+- The pulled image passes the Phase 7 check: `docker run` + `grpcurl` calling
+  `Render`.
+
+---
+
 ## Out of Scope for This Repository
 
-- Publishing the image to GHCR — there is no remote yet (second half of ADR
-  action item 8).
 - The gRPC client, the escalation rule and the docker-compose service — these
   live in sitegap-ai (ADR action items 10–13).
 - An egress network policy — required before any public deployment (ADR,
